@@ -29,8 +29,9 @@ since the owner's build green-light, 2026-08-19).
   `--json`/`--brief` reporting in-play rules, deviations, version lag,
   sandbox ages, and delta-ratio (`src/status.ts`, `src/cli.ts`).
   Delta-ratio reports *unavailable* pending the audit-log register
-  amendment — proposed via the standard channel, never self-applied
-  (Article 8). Workflow declarations are recognized but unparseable
+  amendment — proposed via the standard channel
+  ([methodology PR #3](https://github.com/majodali/methodology/pull/3),
+  adjudication at a review round), never self-applied (Article 8). Workflow declarations are recognized but unparseable
   until the methodology defines the declaration format (its open
   item); `deployed` stays false with a finding. Gate evidence: 19
   passing tests — implicit-C0 / minimal-C0 / full-C2 fixtures, the
