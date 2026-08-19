@@ -1,0 +1,17 @@
+{
+  "name": "@majodali/methodology-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "mtool: discharges the majodali methodology's deterministic audit duties. The methodology documents are the spec (Constitution Article 3).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/test.ts",
+    "mtool": "tsx src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

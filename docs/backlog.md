@@ -3,9 +3,8 @@
 The single source of progress truth for this repo (methodology K-003);
 entries update in the same commit as the work they describe (W-003).
 Chunk entries below are seeded from the founding plan,
-[methodology-tools-v1](plans/methodology-tools-v1.md) (status: draft) —
-none starts before the owner green-lights the plan (W-001), which flips
-it to `active`.
+[methodology-tools-v1](plans/methodology-tools-v1.md) (status: active
+since the owner's build green-light, 2026-08-19).
 
 ## Completed
 
@@ -20,14 +19,26 @@ it to `active`.
   [Portfolio register](https://github.com/majodali/methodology/blob/main/docs/registers/portfolio.md)
   (M-001).
 
-## Upcoming
+- [x] **Chunk 1 — markdown model, applicability engine, `status`** —
+  shipped: line-based markdown model (`src/markdown.ts`),
+  Classification parsing with the vocabulary's omission defaults and
+  implicit-C0 handling (`src/classification.ts`), rule-corpus parsing
+  of applicability tags with Article 5 defaults (`src/rules.ts`), the
+  Article 4 stage 1 + stage 2.3 engine over effective constraining
+  conditions (`src/applicability.ts`), and `mtool status` with
+  `--json`/`--brief` reporting in-play rules, deviations, version lag,
+  sandbox ages, and delta-ratio (`src/status.ts`, `src/cli.ts`).
+  Delta-ratio reports *unavailable* pending the audit-log register
+  amendment — proposed via the standard channel, never self-applied
+  (Article 8). Workflow declarations are recognized but unparseable
+  until the methodology defines the declaration format (its open
+  item); `deployed` stays false with a finding. Gate evidence: 19
+  passing tests — implicit-C0 / minimal-C0 / full-C2 fixtures, the
+  constitution's own precedence tie-break examples, real-corpus parse
+  (21 rules, no findings), and the methodology repo itself reporting
+  its 14 in-play rules. **Gate review pending.**
 
-- [ ] **Chunk 1 — markdown model, applicability engine, `status`** —
-  awaits plan activation. Gate: `status` correct against fixtures for
-  implicit-C0, minimal-C0, and full C2 Classifications, including
-  precedence tie-breaks. Proposes the audit-log register amendment
-  (`docs/audits.md`) via the standard channel, motivated by the
-  `status` implementation.
+## Upcoming
 - [ ] **Chunk 2 — `classify` and `links check`** — gate: a fresh repo
   goes from empty to form-clean in one `classify` run; `links check`
   findings cite rule/article sources. Closes methodology Risk R2.

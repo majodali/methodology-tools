@@ -1,6 +1,7 @@
 # methodology-tools v1
 
-Status: draft — chunk boundaries await owner approval (W-001)
+Status: active — chunk boundaries approved as proposed; build
+green-lit by the owner 2026-08-19 (W-001)
 
 Outcome under development: a single CLI, `mtool`, that discharges the
 methodology's deterministic audit duties and makes adoption cheaper than
