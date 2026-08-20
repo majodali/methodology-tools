@@ -19,6 +19,12 @@ it to `active`.
   the methodology's
   [Portfolio register](https://github.com/majodali/methodology/blob/main/docs/registers/portfolio.md)
   (M-001).
+- [x] **Migrated to methodology 1.1.0** — pin and Binding block bumped
+  (v1.1.0 migration notes: none for either amendment, so the pin bump
+  is the whole migration — release process step 5). The 1.1.0 content
+  matters here directly: the audit-log register unblocks `mtool
+  status` delta-ratio (chunk 1), and M-004 becomes a checkable rule
+  for `mtool audit` (chunk 3).
 
 ## Upcoming
 
