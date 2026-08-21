@@ -76,11 +76,33 @@ since the owner's build green-light, 2026-08-19).
   links, matching the retired ad-hoc script exactly). Closes
   methodology Risk R2 (companion PR there). **Gate review pending.**
 
+- [x] **Chunk 3 — `audit form` and hook installation** — shipped:
+  `mtool audit form` (`src/audit.ts`) runs the mechanically checkable
+  subset of in-play rules — existence rules (K-002/K-003/K-004/W-007/
+  M-001, with the canonical-home check catching root-level Backlogs),
+  Binding-block declaration consistency (Article 4 accuracy), K-002
+  length, K-004 entry statuses, K-007 plan Status lines (blockquote/
+  emphasis dress accepted; TEMPLATE and README exempt), S-001 secret
+  hygiene (credential-shaped filenames + key patterns), Article 7
+  sandbox ages, Article 10 link integrity, and the Article 8 lag/
+  deviation call-outs every audit MUST make. Delta modes `--staged`
+  (the W-003 same-commit guard) and `--changed-since`; scoping per the
+  proposed delta-scope calibration amendment — per-file content checks
+  delta-scoped, repo-wide invariants always full-tree. `mtool hooks
+  install` (`src/hooks.ts`) writes the git pre-commit mirror
+  (absolute-path embedding documented as a pre-package limitation).
+  Gate evidence: 33 tests (fixture audit, classify→audit-clean loop,
+  staged W-003 guard both ways, S-001 catches, hook install) and the
+  first audit of reality: allegro's findings match its own
+  adoption-transition notes exactly (root BACKLOG.md relocation
+  pending, 1.0.0 lag, Workflow-format open item), in-real-life shows
+  one real W-007 gap (no README), template/ops/org audit clean at
+  implicit C0, and both governed repos self-audit clean — after the
+  run corrected two tool bugs (blockquoted Status lines are compliant
+  dress; the scanner flagged its own test literal). Closes methodology
+  Risk R1 (companion PR there). **Gate review pending.**
+
 ## Upcoming
-- [ ] **Chunk 3 — `audit form` and hook installation** — gate: findings
-  against allegro, in-real-life, and the template match the known gap
-  analysis. Closes methodology Risk R1 (Article 11 transitional
-  register updated).
 - [ ] **Chunk 4 — `census` and `audit semantic` assembly** — gate:
   first real census output adjudicated by owner at a review round.
   Requires the audit-log register amendment. Closes methodology Risk

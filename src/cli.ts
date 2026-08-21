@@ -6,7 +6,9 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
+import { buildAudit, renderAudit } from './audit.js';
 import { classify, renderClassifyResult } from './classify.js';
+import { installHooks } from './hooks.js';
 import { checkLinks, renderLinkReport } from './links.js';
 import { buildStatus, renderHuman } from './status.js';
 import { TARGETS, TYPES, ProjectType, Target } from './types.js';
@@ -22,6 +24,10 @@ function usage(): never {
       '                    block, and required governance docs from the corpus',
       '                    skeletons (interactive where flags are omitted)',
       '  links check       deterministic link integrity across the repo',
+      '  audit form        the daily deterministic audit (Article 9): the',
+      '                    mechanically checkable subset of in-play rules',
+      '  hooks install     write a git pre-commit hook running the staged',
+      '                    form audit (same-commit guard, W-003)',
       '',
       'common options:',
       '  --repo <path>     project to operate on (default: cwd)',
@@ -32,6 +38,7 @@ function usage(): never {
       'status options:   --brief',
       'classify options: --tier C0..C3  --slevel S0..S2  --type <type>',
       '                  --target <target>  --pin <X.Y.Z>  --description <text>',
+      'audit options:    --staged | --changed-since <ref>',
     ].join('\n'),
   );
   process.exit(2);
@@ -66,6 +73,8 @@ const { values, positionals } = parseArgs({
     target: { type: 'string' },
     pin: { type: 'string' },
     description: { type: 'string' },
+    staged: { type: 'boolean', default: false },
+    'changed-since': { type: 'string' },
   },
 });
 
@@ -100,6 +109,22 @@ if (command === 'status') {
   else console.log(renderLinkReport(report));
   // Dangling links are audit findings (Article 10) — nonzero exit.
   process.exit(report.findings.length === 0 ? 0 : 1);
+} else if (command === 'audit' && positionals[1] === 'form') {
+  const corpus = findCorpus(values.corpus, repo);
+  const sinceRef = values['changed-since'];
+  const mode = values.staged ? 'staged' : sinceRef ? 'changed-since' : 'full';
+  const report = buildAudit(repo, corpus, { mode, sinceRef });
+  if (values.json) console.log(JSON.stringify(report, null, 2));
+  else console.log(renderAudit(report));
+  // Nonzero exit on MUST violations; warnings/info never block.
+  process.exit(report.findings.some((f) => f.severity === 'violation') ? 1 : 0);
+} else if (command === 'hooks' && positionals[1] === 'install') {
+  const corpus = findCorpus(values.corpus, repo);
+  const { hookPath } = installHooks(repo, corpus);
+  console.log(
+    `installed ${hookPath} — runs \`mtool audit form --staged\` before each commit ` +
+      '(bypass an intentional exception with --no-verify and record why in the Backlog)',
+  );
 } else if (command === 'classify') {
   const corpus = findCorpus(values.corpus, repo);
   const tier = values.tier ?? (await ask('C-tier (C0..C3)?', ['C0', 'C1', 'C2', 'C3']));

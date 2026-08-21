@@ -91,8 +91,11 @@ export function parseDoc(path: string): Doc {
       });
     }
 
-    const s = raw.match(/^Status:\s*(.+)$/);
-    if (s) statusLines.push({ value: s[1]!.trim(), line });
+    // Status lines may be blockquoted and carry emphasis — the
+    // vocabulary fixes the designation values, not the markdown dress
+    // (`> Status: **closed** → …` is a compliant Status line).
+    const s = raw.match(/^(?:>\s*)?Status:\s*(.+)$/);
+    if (s) statusLines.push({ value: s[1]!.replace(/[*_`]/g, '').trim(), line });
 
     for (const m of raw.matchAll(LINK_RE)) {
       links.push({ text: m[1]!, target: m[2]!, line });

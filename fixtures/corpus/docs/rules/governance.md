@@ -27,6 +27,14 @@ Cites: —
 
 Miniature of the real K-004.
 
+### W-003 — Documentation moves in the same commit as the work
+Applies: [C1+]
+Keywords: MUST
+Motivated-by: fixture
+Cites: —
+
+Miniature of the real W-003.
+
 ### W-007 — Every project has a README that says what it is
 Applies: [C0+]
 Keywords: MUST
@@ -34,3 +42,11 @@ Motivated-by: fixture
 Cites: —
 
 Miniature of the real W-007.
+
+### S-001 — No secrets in repositories, ever
+Applies: [C0+]
+Keywords: MUST NOT
+Motivated-by: fixture
+Cites: —
+
+Miniature of the real S-001.

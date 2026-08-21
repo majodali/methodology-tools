@@ -104,7 +104,7 @@ function buildDeltaRatio(repo: string): StatusReport['deltaRatio'] {
   };
 }
 
-function scanSandbox(repo: string): SandboxItem[] {
+export function scanSandbox(repo: string): SandboxItem[] {
   const items: SandboxItem[] = [];
   for (const rel of markdownFiles(repo)) {
     const doc = parseDoc(join(repo, rel));
