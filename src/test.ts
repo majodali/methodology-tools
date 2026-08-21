@@ -10,7 +10,7 @@ import { constraints, inPlay, moreSpecific } from './applicability.js';
 import { loadClassification } from './classification.js';
 import { slugify } from './markdown.js';
 import { defaultConditions, loadRules, parseApplies } from './rules.js';
-import { buildStatus, renderHuman } from './status.js';
+import { buildStatus, lastSemanticAudit, renderHuman } from './status.js';
 import { Rule, deriveState } from './types.js';
 
 let passed = 0;
@@ -193,7 +193,8 @@ test('status: full C2 fixture against the fixture corpus', () => {
   assert.equal(report.version.lag, null); // fixture corpus has no version tags
   assert.equal(report.sandbox.length, 1);
   assert.equal(report.sandbox[0]!.designation, 'in-progress');
-  assert.equal(report.deltaRatio.value, null); // audit-log amendment pending
+  assert.equal(report.deltaRatio.value, null); // fixture has no Audit log
+  assert.ok(report.deltaRatio.note.includes('no Audit log'));
   const brief = renderHuman(report, true);
   assert.ok(brief.includes('C2 / S1 / web-app / serverless-aws'));
   assert.ok(brief.split('\n').length <= 4);
@@ -206,16 +207,38 @@ test('status: implicit C0 fixture reports the implicit default honestly', () => 
   assert.equal(report.version.lag, false); // unpinned ⇒ latest, moves with it
 });
 
+// ---------- delta-ratio against the Audit log (methodology ≥ 1.1.0) ----------
+
+test('audit-log parsing: no log, no semantic entry, newest semantic date', () => {
+  assert.deepEqual(lastSemanticAudit(resolve(FIXTURES, 'full-c2')), { kind: 'no-log' });
+  assert.deepEqual(lastSemanticAudit(resolve(FIXTURES, 'audited-c1')), {
+    kind: 'date',
+    date: '2020-01-01',
+  });
+});
+
+test('delta-ratio computed for a fixture with a recorded semantic audit', () => {
+  // The fixture lives inside this git repo; the ratio is scoped to the
+  // fixture directory, whose files were all committed after 2020-01-01.
+  const report = buildStatus(resolve(FIXTURES, 'audited-c1'), CORPUS);
+  assert.equal(report.deltaRatio.sinceSemanticAudit, '2020-01-01');
+  assert.ok(report.deltaRatio.value !== null && report.deltaRatio.value > 0);
+});
+
 // ---------- the real corpus, when a checkout is available ----------
 
 const realCorpus = process.env['MTOOL_CORPUS'];
 if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
-  test('real corpus parses cleanly: 21 seed rules, no findings', () => {
+  // Owner-approved change (W-002, 2026-08-20): the exact rule count
+  // (21) broke when v1.1.0 added M-004 — a correct signal, resolved by
+  // asserting a clean parse and the expected IDs instead of a count
+  // that re-breaks on every accepted amendment.
+  test('real corpus parses cleanly with all expected rule IDs', () => {
     const { rules, findings } = loadRules(realCorpus);
     assert.deepEqual(findings, []);
-    assert.equal(rules.length, 21);
+    assert.ok(rules.length >= 22, `expected ≥22 rules, got ${rules.length}`);
     const ids = rules.map((r) => r.id);
-    for (const id of ['K-001', 'K-009', 'W-001', 'W-007', 'M-001', 'M-003', 'S-001', 'S-002'])
+    for (const id of ['K-001', 'K-009', 'W-001', 'W-007', 'M-001', 'M-003', 'M-004', 'S-001', 'S-002'])
       assert.ok(ids.includes(id), `missing ${id}`);
   });
 
@@ -227,8 +250,17 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
     // C0+ baseline, and the M- mirrors; K-004..K-009 and W-004 are C2+,
     // so out of play.
     assert.ok(ids.includes('M-001') && ids.includes('M-002') && ids.includes('M-003'));
+    assert.ok(ids.includes('M-004')); // in play since the repo migrated to 1.1.0
     assert.ok(ids.includes('K-001') && ids.includes('W-003') && ids.includes('S-001'));
     assert.ok(!ids.includes('K-004') && !ids.includes('K-007') && !ids.includes('W-004'));
+  });
+
+  test('real corpus: delta-ratio is honest about the missing semantic audit', () => {
+    const report = buildStatus(realCorpus, realCorpus);
+    // docs/audits.md exists (1.1.0) but holds only the bootstrap form
+    // entry — no semantic audit yet.
+    assert.equal(report.deltaRatio.value, null);
+    assert.ok(report.deltaRatio.note.includes('no semantic audit recorded yet'));
   });
 } else {
   console.log('skip real-corpus tests (set MTOOL_CORPUS to a methodology checkout)');

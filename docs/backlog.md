@@ -45,6 +45,18 @@ since the owner's build green-light, 2026-08-19).
   (21 rules, no findings), and the methodology repo itself reporting
   its 14 in-play rules. **Gate review pending.**
 
+- [x] **Chunk 1 completion: delta-ratio wired to the Audit log** —
+  `mtool status` now reads the project's `docs/audits.md` (available
+  since methodology 1.1.0): computes the change ratio since the newest
+  semantic-audit entry (git numstat over current tracked lines, scoped
+  to the repo), or reports honestly "no semantic audit recorded yet" /
+  "no Audit log". The stale amendment-pending message is gone. The
+  repo's own sandbox scan excludes `fixtures/` (test data is not the
+  project's sandbox). Real-corpus tests track the 1.1.0 corpus —
+  exact-count assertion replaced by clean-parse + expected-IDs
+  including M-004 (owner-approved change to an existing assertion,
+  W-002, 2026-08-20).
+
 ## Upcoming
 - [ ] **Chunk 2 — `classify` and `links check`** — gate: a fresh repo
   goes from empty to form-clean in one `classify` run; `links check`

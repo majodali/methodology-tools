@@ -4,7 +4,7 @@
 // corpus alone.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { inPlay } from './applicability.js';
 import { loadClassification } from './classification.js';
@@ -13,6 +13,7 @@ import { loadRules } from './rules.js';
 import { Classification, ProjectState, Rule, deriveState } from './types.js';
 
 const SANDBOX_DESIGNATIONS = ['in-progress', 'not-compliant'];
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 export interface SandboxItem {
   file: string;
@@ -36,7 +37,8 @@ export interface StatusReport {
   };
   sandbox: SandboxItem[];
   deltaRatio: {
-    value: null;
+    value: number | null;
+    sinceSemanticAudit: string | null;
     note: string;
   };
   findings: string[];
@@ -71,12 +73,75 @@ function latestSemverTag(corpus: string): string | null {
 function* markdownFiles(root: string, sub = ''): Generator<string> {
   const dir = join(root, sub);
   for (const name of readdirSync(dir)) {
-    if (name === '.git' || name === 'node_modules') continue;
+    // `fixtures` holds test data, not the project's own material — a
+    // deliberately sandbox-designated fixture is not the repo's sandbox.
+    if (name === '.git' || name === 'node_modules' || name === 'fixtures') continue;
     const rel = sub ? `${sub}/${name}` : name;
     const full = join(root, rel);
     if (statSync(full).isDirectory()) yield* markdownFiles(root, rel);
     else if (name.endsWith('.md')) yield rel;
   }
+}
+
+/** Date of the newest `semantic` entry in the project's Audit log
+ *  (`docs/audits.md`, methodology ≥ 1.1.0), or why there is none. */
+export function lastSemanticAudit(repo: string): { kind: 'no-log' } | { kind: 'none' } | { kind: 'date'; date: string } {
+  const path = join(repo, 'docs', 'audits.md');
+  if (!existsSync(path)) return { kind: 'no-log' };
+  let last: string | null = null;
+  for (const raw of readFileSync(path, 'utf8').split('\n')) {
+    const m = raw.match(/^-\s+(\d{4}-\d{2}-\d{2})\s+—\s+semantic\b/u);
+    if (m && (!last || m[1]! > last)) last = m[1]!;
+  }
+  return last ? { kind: 'date', date: last } : { kind: 'none' };
+}
+
+/** Lines changed since `sinceDate` over current tracked lines, scoped to
+ *  the repo directory. Null when git history is unavailable. */
+export function changeRatioSince(repo: string, sinceDate: string): number | null {
+  const num = git(['log', `--since=${sinceDate}`, '--numstat', '--format=', '--', '.'], repo);
+  if (num === null) return null;
+  let changed = 0;
+  for (const line of num.split('\n')) {
+    const m = line.match(/^(\d+)\t(\d+)\t/);
+    if (m) changed += Number(m[1]) + Number(m[2]);
+  }
+  const total = git(['diff', '--shortstat', EMPTY_TREE, 'HEAD', '--', '.'], repo);
+  const tm = total?.match(/(\d+) insertion/);
+  if (!tm) return null;
+  const size = Number(tm[1]);
+  return size > 0 ? changed / size : null;
+}
+
+function buildDeltaRatio(repo: string): StatusReport['deltaRatio'] {
+  const last = lastSemanticAudit(repo);
+  if (last.kind === 'no-log') {
+    return {
+      value: null,
+      sinceSemanticAudit: null,
+      note: 'no Audit log (docs/audits.md) in this project — the register is available since methodology 1.1.0',
+    };
+  }
+  if (last.kind === 'none') {
+    return {
+      value: null,
+      sinceSemanticAudit: null,
+      note: 'no semantic audit recorded yet in docs/audits.md',
+    };
+  }
+  const value = changeRatioSince(repo, last.date);
+  if (value === null) {
+    return {
+      value: null,
+      sinceSemanticAudit: last.date,
+      note: `last semantic audit ${last.date}; ratio undecidable — git history unavailable`,
+    };
+  }
+  return {
+    value,
+    sinceSemanticAudit: last.date,
+    note: `${Math.round(value * 100)}% of current tracked lines changed since the semantic audit of ${last.date} (Article 9 auto-trigger calibration: 50% at C2, 25% at C3)`,
+  };
 }
 
 function scanSandbox(repo: string): SandboxItem[] {
@@ -136,13 +201,7 @@ export function buildStatus(repo: string, corpus: string): StatusReport {
     deviations: classification.deviations,
     version: { pinned: classification.pinned, corpusLatest, lag, note },
     sandbox: scanSandbox(repo),
-    deltaRatio: {
-      value: null,
-      note:
-        'unavailable: needs a machine-readable time of last semantic audit — the audit-log ' +
-        'register (docs/audits.md) amendment is proposed but not adjudicated (Article 8: ' +
-        'proposed practice is never self-applied)',
-    },
+    deltaRatio: buildDeltaRatio(repo),
     findings,
   };
 }
