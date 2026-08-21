@@ -57,10 +57,26 @@ since the owner's build green-light, 2026-08-19).
   including M-004 (owner-approved change to an existing assertion,
   W-002, 2026-08-20).
 
+- [x] **Chunk 2 — `classify` and `links check`** — shipped:
+  `mtool links check` (`src/links.ts`) — deterministic link integrity
+  (files + GitHub-slug anchors) across a repo, findings citing
+  Articles 10/9, nonzero exit on findings; `mtool classify`
+  (`src/classify.ts`) — adoption in one run, writing the
+  Classification, Binding block, and governance docs from the corpus's
+  own `skeletons/`, driven by the declared classification's in-play
+  rules (each written file cites the rule requiring it; K-005: no
+  empty-ceremony registers; never overwrites; pin auto-resolves to the
+  corpus's latest release tag; C0 omits the pin per the omission
+  default). Shared git/walker helpers refactored to `src/git.ts` /
+  `src/markdown.ts`; `fixtures/` excluded from a repo's own material by
+  default. Gate evidence: 27 passing tests — broken-links fixture
+  (dangling file + anchor, Article 10 citations), fresh-repo
+  classify-to-form-clean (C2 and C0-baseline cases, second run
+  overwrites nothing), self- and real-corpus link checks (144 relative
+  links, matching the retired ad-hoc script exactly). Closes
+  methodology Risk R2 (companion PR there). **Gate review pending.**
+
 ## Upcoming
-- [ ] **Chunk 2 — `classify` and `links check`** — gate: a fresh repo
-  goes from empty to form-clean in one `classify` run; `links check`
-  findings cite rule/article sources. Closes methodology Risk R2.
 - [ ] **Chunk 3 — `audit form` and hook installation** — gate: findings
   against allegro, in-real-life, and the template match the known gap
   analysis. Closes methodology Risk R1 (Article 11 transitional

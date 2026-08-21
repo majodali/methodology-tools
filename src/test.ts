@@ -4,10 +4,13 @@
 // Runner-native, no framework (methodology practice C2).
 
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { constraints, inPlay, moreSpecific } from './applicability.js';
+import { classify } from './classify.js';
 import { loadClassification } from './classification.js';
+import { checkLinks } from './links.js';
 import { slugify } from './markdown.js';
 import { defaultConditions, loadRules, parseApplies } from './rules.js';
 import { buildStatus, lastSemanticAudit, renderHuman } from './status.js';
@@ -187,7 +190,8 @@ test('status: full C2 fixture against the fixture corpus', () => {
   const report = buildStatus(resolve(FIXTURES, 'full-c2'), CORPUS);
   assert.deepEqual(
     report.inPlay.map((r) => r.id),
-    ['T-001', 'T-101', 'T-201'], // T-301 needs deployed
+    // governance.md stubs + T-rules; T-301 needs deployed
+    ['K-002', 'K-003', 'K-004', 'W-007', 'T-001', 'T-101', 'T-201'],
   );
   assert.equal(report.deviations.length, 1);
   assert.equal(report.version.lag, null); // fixture corpus has no version tags
@@ -203,7 +207,7 @@ test('status: full C2 fixture against the fixture corpus', () => {
 test('status: implicit C0 fixture reports the implicit default honestly', () => {
   const report = buildStatus(resolve(FIXTURES, 'implicit-c0'), CORPUS);
   assert.equal(report.classification.implicit, true);
-  assert.deepEqual(report.inPlay.map((r) => r.id), ['T-001']);
+  assert.deepEqual(report.inPlay.map((r) => r.id), ['W-007', 'T-001']);
   assert.equal(report.version.lag, false); // unpinned ⇒ latest, moves with it
 });
 
@@ -223,6 +227,94 @@ test('delta-ratio computed for a fixture with a recorded semantic audit', () => 
   const report = buildStatus(resolve(FIXTURES, 'audited-c1'), CORPUS);
   assert.equal(report.deltaRatio.sinceSemanticAudit, '2020-01-01');
   assert.ok(report.deltaRatio.value !== null && report.deltaRatio.value > 0);
+});
+
+// ---------- links check (chunk-2 gate: findings cite rule/article sources) ----------
+
+test('links check: dangling file and dangling anchor are findings citing Article 10', () => {
+  const report = checkLinks(resolve(FIXTURES, 'broken-links'));
+  assert.equal(report.linksChecked, 3);
+  assert.equal(report.findings.length, 2);
+  const problems = report.findings.map((f) => f.problem).sort();
+  assert.deepEqual(problems, ['missing-anchor', 'missing-file']);
+  for (const f of report.findings) assert.ok(f.cites.includes('Article 10'));
+});
+
+test('links check: this repo is clean (fixtures excluded as test data)', () => {
+  const report = checkLinks(resolve(import.meta.dirname, '..'));
+  assert.deepEqual(report.findings, []);
+  assert.ok(report.filesScanned >= 5);
+});
+
+// ---------- classify (chunk-2 gate: empty repo to form-clean in one run) ----------
+
+test('classify: a fresh C2 web-app repo is form-clean in one run', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-classify-'));
+  try {
+    const result = classify(tmp, CORPUS, {
+      ctier: 2,
+      slevel: 0,
+      type: 'web-app',
+      target: 'serverless-aws',
+      pin: '1.1.0',
+      description: 'A test project.',
+    });
+    assert.deepEqual(
+      result.written.map((w) => w.path).sort(),
+      ['CLAUDE.md', 'README.md', 'docs/backlog.md', 'docs/classification.md', 'docs/decisions.md'],
+    );
+    // Every scaffolded file cites the rule that required it.
+    for (const w of result.written.filter((x) => x.path !== 'docs/classification.md'))
+      assert.ok(/[KW]-\d{3}/.test(w.because), `${w.path} lacks a rule citation`);
+
+    const c = loadClassification(tmp);
+    assert.deepEqual(c.findings, []);
+    assert.equal(c.ctier, 2);
+    assert.equal(c.pinned, '1.1.0');
+    assert.equal(c.type, 'web-app');
+
+    const status = buildStatus(tmp, CORPUS);
+    assert.deepEqual(status.findings, []);
+    assert.deepEqual(
+      status.inPlay.map((r) => r.id),
+      ['K-002', 'K-003', 'K-004', 'W-007', 'T-001', 'T-101', 'T-201'],
+    );
+
+    assert.deepEqual(checkLinks(tmp).findings, []);
+
+    // Second run changes nothing: classify never overwrites.
+    const again = classify(tmp, CORPUS, {
+      ctier: 2,
+      slevel: 0,
+      type: 'web-app',
+      target: 'serverless-aws',
+      pin: '1.1.0',
+    });
+    assert.deepEqual(again.written, []);
+    assert.equal(again.skipped.length, 5);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('classify: C0 scaffolds only the C0 baseline (README; no ceremony)', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-classify-c0-'));
+  try {
+    const result = classify(tmp, CORPUS, {
+      ctier: 0,
+      slevel: 0,
+      type: 'exploration',
+      target: 'none/local',
+    });
+    const paths = result.written.map((w) => w.path).sort();
+    assert.deepEqual(paths, ['README.md', 'docs/classification.md']);
+    // No K-002 bootstrap, no K-003 backlog, no K-004 register at C0.
+    const c = loadClassification(tmp);
+    assert.equal(c.ctier, 0);
+    assert.deepEqual(c.findings, []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 // ---------- the real corpus, when a checkout is available ----------
@@ -261,6 +353,12 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
     // entry — no semantic audit yet.
     assert.equal(report.deltaRatio.value, null);
     assert.ok(report.deltaRatio.note.includes('no semantic audit recorded yet'));
+  });
+
+  test('real corpus: links check passes across the whole methodology tree', () => {
+    const report = checkLinks(realCorpus);
+    assert.deepEqual(report.findings, []);
+    assert.ok(report.linksChecked >= 140, `checked only ${report.linksChecked}`);
   });
 } else {
   console.log('skip real-corpus tests (set MTOOL_CORPUS to a methodology checkout)');
