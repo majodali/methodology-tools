@@ -4,11 +4,14 @@
 // Runner-native, no framework (methodology practice C2).
 
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { constraints, inPlay, moreSpecific } from './applicability.js';
+import { buildAudit } from './audit.js';
 import { classify } from './classify.js';
+import { installHooks } from './hooks.js';
 import { loadClassification } from './classification.js';
 import { checkLinks } from './links.js';
 import { slugify } from './markdown.js';
@@ -191,7 +194,7 @@ test('status: full C2 fixture against the fixture corpus', () => {
   assert.deepEqual(
     report.inPlay.map((r) => r.id),
     // governance.md stubs + T-rules; T-301 needs deployed
-    ['K-002', 'K-003', 'K-004', 'W-007', 'T-001', 'T-101', 'T-201'],
+    ['K-002', 'K-003', 'K-004', 'W-003', 'W-007', 'S-001', 'T-001', 'T-101', 'T-201'],
   );
   assert.equal(report.deviations.length, 1);
   assert.equal(report.version.lag, null); // fixture corpus has no version tags
@@ -207,7 +210,7 @@ test('status: full C2 fixture against the fixture corpus', () => {
 test('status: implicit C0 fixture reports the implicit default honestly', () => {
   const report = buildStatus(resolve(FIXTURES, 'implicit-c0'), CORPUS);
   assert.equal(report.classification.implicit, true);
-  assert.deepEqual(report.inPlay.map((r) => r.id), ['W-007', 'T-001']);
+  assert.deepEqual(report.inPlay.map((r) => r.id), ['W-007', 'S-001', 'T-001']);
   assert.equal(report.version.lag, false); // unpinned ⇒ latest, moves with it
 });
 
@@ -277,7 +280,7 @@ test('classify: a fresh C2 web-app repo is form-clean in one run', () => {
     assert.deepEqual(status.findings, []);
     assert.deepEqual(
       status.inPlay.map((r) => r.id),
-      ['K-002', 'K-003', 'K-004', 'W-007', 'T-001', 'T-101', 'T-201'],
+      ['K-002', 'K-003', 'K-004', 'W-003', 'W-007', 'S-001', 'T-001', 'T-101', 'T-201'],
     );
 
     assert.deepEqual(checkLinks(tmp).findings, []);
@@ -312,6 +315,97 @@ test('classify: C0 scaffolds only the C0 baseline (README; no ceremony)', () => 
     const c = loadClassification(tmp);
     assert.equal(c.ctier, 0);
     assert.deepEqual(c.findings, []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ---------- audit form (chunk-3 gate) ----------
+
+function sh(cwd: string, ...args: string[]): void {
+  execFileSync('git', args, { cwd, stdio: 'ignore' });
+}
+
+test('audit form: full-C2 fixture surfaces the missing governance files', () => {
+  const report = buildAudit(resolve(FIXTURES, 'full-c2'), CORPUS, { mode: 'full' });
+  const violations = new Set(
+    report.findings.filter((f) => f.severity === 'violation').map((f) => f.rule),
+  );
+  assert.deepEqual([...violations].sort(), ['K-002', 'K-003', 'K-004', 'W-007']);
+  const info = report.findings.filter((f) => f.severity === 'info');
+  assert.ok(info.some((f) => f.rule === 'Article 7')); // sandbox age
+});
+
+test('audit form: a classify-scaffolded repo audits clean (the adoption loop)', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-audit-clean-'));
+  try {
+    classify(tmp, CORPUS, {
+      ctier: 2,
+      slevel: 0,
+      type: 'web-app',
+      target: 'serverless-aws',
+      pin: '1.1.0',
+      description: 'Audit-clean loop.',
+    });
+    const report = buildAudit(tmp, CORPUS, { mode: 'full' });
+    const blocking = report.findings.filter((f) => f.severity !== 'info');
+    assert.deepEqual(blocking, []);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('audit form --staged: the W-003 same-commit guard', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-audit-staged-'));
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.1.0', description: 'Guard test.' });
+    sh(tmp, 'init', '-q');
+    sh(tmp, 'add', '-A');
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'scaffold');
+    // Source staged, nothing under docs/ staged → violation.
+    execFileSync('bash', ['-c', 'mkdir -p src && echo "export {}" > src/app.ts'], { cwd: tmp });
+    sh(tmp, 'add', 'src/app.ts');
+    const bad = buildAudit(tmp, CORPUS, { mode: 'staged' });
+    assert.ok(bad.findings.some((f) => f.rule === 'W-003' && f.severity === 'violation'));
+    // Backlog staged alongside → guard satisfied.
+    execFileSync('bash', ['-c', 'echo "- [ ] app" >> docs/backlog.md'], { cwd: tmp });
+    sh(tmp, 'add', 'docs/backlog.md');
+    const good = buildAudit(tmp, CORPUS, { mode: 'staged' });
+    assert.ok(!good.findings.some((f) => f.rule === 'W-003'));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('audit form: S-001 catches tracked credential files and key patterns', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-audit-secrets-'));
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.1.0', description: 'Secrets test.' });
+    sh(tmp, 'init', '-q');
+    execFileSync('bash', ['-c', 'echo "TOKEN=x" > .env'], { cwd: tmp });
+    // Assemble the key pattern at runtime so this source file never
+    // contains it contiguously (the scanner audits this repo too).
+    const fakeKey = ['AK', 'IA', 'ABCDEFGH', 'IJKLMNOP'].join('');
+    writeFileSync(join(tmp, 'config.ts'), `const k = '${fakeKey}'\n`);
+    sh(tmp, 'add', '-A');
+    const report = buildAudit(tmp, CORPUS, { mode: 'full' });
+    const s = report.findings.filter((f) => f.rule === 'S-001' && f.severity === 'violation');
+    assert.equal(s.length, 2);
+    assert.ok(s.some((f) => f.file === '.env') && s.some((f) => f.file === 'config.ts'));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('hooks install writes an executable pre-commit running the staged audit', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-hooks-'));
+  try {
+    sh(tmp, 'init', '-q');
+    const { hookPath } = installHooks(tmp, CORPUS);
+    assert.ok(existsSync(hookPath));
+    const content = execFileSync('cat', [hookPath], { encoding: 'utf8' });
+    assert.ok(content.includes('audit form --staged'));
+    assert.ok(content.startsWith('#!/bin/sh'));
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -359,6 +453,12 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
     const report = checkLinks(realCorpus);
     assert.deepEqual(report.findings, []);
     assert.ok(report.linksChecked >= 140, `checked only ${report.linksChecked}`);
+  });
+
+  test('real corpus: the methodology repo passes its own form audit', () => {
+    const report = buildAudit(realCorpus, realCorpus, { mode: 'full' });
+    assert.deepEqual(report.findings.filter((f) => f.severity === 'violation'), []);
+    assert.ok(report.versionLag.startsWith('none'));
   });
 } else {
   console.log('skip real-corpus tests (set MTOOL_CORPUS to a methodology checkout)');
