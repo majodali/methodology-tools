@@ -3,7 +3,8 @@
 // Deliberately line-based and un-glamorous (tools plan, design
 // decisions): parse ambiguity is a finding, never a guess.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface Heading {
   level: number;
@@ -30,6 +31,23 @@ export interface Doc {
   links: Link[];
   /** All `Status: ...` designation lines outside code fences. */
   statusLines: StatusLine[];
+}
+
+/** Repo-relative paths of markdown files under `root`, excluded dirs
+ *  skipped at any depth. `fixtures` is excluded by default: test data is
+ *  not the project's own material (its deliberate sandbox markers and
+ *  broken links are the fixture's content, not the repo's state). */
+export function* markdownFiles(
+  root: string,
+  exclude: string[] = ['.git', 'node_modules', 'fixtures'],
+  sub = '',
+): Generator<string> {
+  for (const name of readdirSync(join(root, sub))) {
+    if (exclude.includes(name)) continue;
+    const rel = sub ? `${sub}/${name}` : name;
+    if (statSync(join(root, rel)).isDirectory()) yield* markdownFiles(root, exclude, rel);
+    else if (name.endsWith('.md')) yield rel;
+  }
 }
 
 /** GitHub-style heading slug (lowercase; drop punctuation; spaces to hyphens). */

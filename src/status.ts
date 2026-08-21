@@ -3,17 +3,16 @@
 // semantic audit (Article 9), from the Classification and the pinned
 // corpus alone.
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { inPlay } from './applicability.js';
 import { loadClassification } from './classification.js';
-import { parseDoc } from './markdown.js';
+import { EMPTY_TREE, git, latestSemverTag } from './git.js';
+import { markdownFiles, parseDoc } from './markdown.js';
 import { loadRules } from './rules.js';
 import { Classification, ProjectState, Rule, deriveState } from './types.js';
 
 const SANDBOX_DESIGNATIONS = ['in-progress', 'not-compliant'];
-const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 export interface SandboxItem {
   file: string;
@@ -42,45 +41,6 @@ export interface StatusReport {
     note: string;
   };
   findings: string[];
-}
-
-function git(args: string[], cwd: string): string | null {
-  try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    return null;
-  }
-}
-
-function latestSemverTag(corpus: string): string | null {
-  const out = git(['tag', '-l', 'v*'], corpus);
-  if (!out) return null;
-  const versions = out
-    .split('\n')
-    .map((t) => t.match(/^v(\d+)\.(\d+)\.(\d+)$/))
-    .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => [Number(m[1]), Number(m[2]), Number(m[3])] as const);
-  if (versions.length === 0) return null;
-  versions.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-  const [x, y, z] = versions[versions.length - 1]!;
-  return `${x}.${y}.${z}`;
-}
-
-function* markdownFiles(root: string, sub = ''): Generator<string> {
-  const dir = join(root, sub);
-  for (const name of readdirSync(dir)) {
-    // `fixtures` holds test data, not the project's own material — a
-    // deliberately sandbox-designated fixture is not the repo's sandbox.
-    if (name === '.git' || name === 'node_modules' || name === 'fixtures') continue;
-    const rel = sub ? `${sub}/${name}` : name;
-    const full = join(root, rel);
-    if (statSync(full).isDirectory()) yield* markdownFiles(root, rel);
-    else if (name.endsWith('.md')) yield rel;
-  }
 }
 
 /** Date of the newest `semantic` entry in the project's Audit log
