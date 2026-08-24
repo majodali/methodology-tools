@@ -342,6 +342,29 @@ function checkBindingConsistency(
   }
 }
 
+/** The audit process's finding fingerprint: the sorted, deduplicated
+ *  set of (rule, severity, file) over violations and warnings — info
+ *  findings, message text, and the corpus version stay outside it. */
+export interface FingerprintItem {
+  rule: string;
+  severity: 'violation' | 'warning';
+  file: string;
+}
+
+export function fingerprint(findings: AuditFinding[]): FingerprintItem[] {
+  const seen = new Set<string>();
+  const out: FingerprintItem[] = [];
+  for (const f of findings) {
+    if (f.severity === 'info') continue;
+    const item = { rule: f.rule, severity: f.severity, file: f.file ?? '' };
+    const key = `${item.rule}|${item.severity}|${item.file}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out.sort((a, b) => `${a.rule}|${a.file}`.localeCompare(`${b.rule}|${b.file}`));
+}
+
 export function renderAudit(r: AuditReport): string {
   const counts = { violation: 0, warning: 0, info: 0 };
   for (const f of r.findings) counts[f.severity]++;
