@@ -5,7 +5,7 @@ definitions and omission defaults: the
 [methodology vocabulary](https://github.com/majodali/methodology/blob/main/docs/vocabulary.md).
 
 - **C-tier**: C1
-- **Pinned methodology version**: 1.1.0 (compliance target)
+- **Pinned methodology version**: 1.2.0 (compliance target)
 - **S-level**: S0
 - **Type**: component/library
 - **Target**: package registry

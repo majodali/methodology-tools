@@ -76,6 +76,11 @@ since the owner's build green-light, 2026-08-19).
   links, matching the retired ad-hoc script exactly). Closes
   methodology Risk R2 (companion PR there). **Gate review pending.**
 
+- [x] **Migrated to methodology 1.2.0** — pin and Binding block bumped
+  (v1.2.0 migration notes: none — release process step 5). The 1.2.0
+  content bears on this repo directly: the delta-scope calibration is
+  what `mtool audit form` implements, and the audit delivery process
+  (with transitional Risk R5) is chunk 4's compare-and-deliver spec.
 - [x] **Chunk 3 — `audit form` and hook installation** — shipped:
   `mtool audit form` (`src/audit.ts`) runs the mechanically checkable
   subset of in-play rules — existence rules (K-002/K-003/K-004/W-007/
