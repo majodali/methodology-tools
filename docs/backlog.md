@@ -132,8 +132,30 @@ since the owner's build green-light, 2026-08-19).
   first entry. Closes methodology Risks R3 and R5 (companion PR
   there). **Gate: census output awaits owner adjudication.**
 
+- [x] **Chunk 5 — `links move` and plugin wiring** — shipped:
+  `mtool links move <from> <to>` (`src/move.ts`) — moves a document
+  with git following, rewrites every inbound link across the repo
+  (anchors preserved), re-bases the moved document's own relative
+  links, warns on heavy linkage (≥5 inbound — Article 10: a heavily
+  linked move is a de facto decision review), leaves a `--tombstone`
+  stub on request, and verifies with a full post-move link check.
+  Whether a document is externally referenced is operator-supplied
+  knowledge until the census maintains an external-reference index —
+  the documented limitation, proposed as the plan's second amendment
+  (methodology Risk R6). Claude Code plugin (`plugin/`, served from
+  `.claude-plugin/marketplace.json`): SessionStart injects `mtool
+  status --brief` (the binding contract read every session by
+  construction), a PreToolUse guard runs `audit form --staged` on
+  `git commit` (blocking on MUST violations — the W-003 guard as a
+  Claude Code hook, dual-track with `hooks install`'s git mirror), and
+  three skills (status / audit / classify) shell to mtool — no rule
+  implemented twice. Pre-package limitation: the plugin resolves an
+  mtool checkout via `MTOOL_HOME` (dev layout auto-detected). Gate
+  evidence: 43 tests, including the gate literally — a
+  classify-scaffolded project's staged audit driven entirely through
+  the plugin's hook path (clean commit passes; source-without-docs
+  blocked exit 2). Plan closed (K-007): all five chunks delivered;
+  this Backlog is the record. Closes methodology Risk R4 (companion
+  PR there). **Gate review pending.**
+
 ## Upcoming
-- [ ] **Chunk 5 — `links move` and plugin wiring** — gate:
-  plugin-installed project passes a full form audit driven entirely
-  through hooks. Documents the external-reference limitation amendment.
-  Closes methodology Risk R4.

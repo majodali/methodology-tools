@@ -4,7 +4,7 @@
 // Runner-native, no framework (methodology practice C2).
 
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -14,6 +14,7 @@ import { reconcile } from './census.js';
 import { classify } from './classify.js';
 import { buildDelivery, parseBaseline } from './deliver.js';
 import { installHooks } from './hooks.js';
+import { moveDoc } from './move.js';
 import { assembleSemanticPacket } from './semantic.js';
 import { loadClassification } from './classification.js';
 import { checkLinks } from './links.js';
@@ -513,6 +514,103 @@ test('semantic packet assembles the adjudication context, judgment-free', () => 
   assert.ok(packet.includes('## In-play rule checklist'));
   assert.ok(packet.includes('Last semantic audit: 2020-01-01'));
   assert.ok(packet.includes('adjudication is human'));
+});
+
+// ---------- chunk 5: links move + plugin wiring ----------
+
+const readFileSync2 = (p: string) => readFileSync(p, 'utf8');
+
+test('links move: inbound rewrite, anchor kept, own links re-based, git mv', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-move-'));
+  try {
+    execFileSync('bash', ['-c', 'mkdir -p docs/notes'], { cwd: tmp });
+    writeFileSync(join(tmp, 'README.md'), '# R\n\nSee [b](docs/b.md#real-heading).\n');
+    writeFileSync(join(tmp, 'docs', 'b.md'), '# B\n\n## Real heading\n\nBack to [readme](../README.md).\n');
+    sh(tmp, 'init', '-q');
+    sh(tmp, 'add', '-A');
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'seed');
+    const r = moveDoc(tmp, 'docs/b.md', 'docs/notes/b2.md');
+    assert.equal(r.inboundTotal, 1);
+    assert.ok(readFileSync2(join(tmp, 'README.md')).includes('(docs/notes/b2.md#real-heading)'));
+    assert.equal(r.selfRewritten, 1);
+    assert.ok(readFileSync2(join(tmp, 'docs', 'notes', 'b2.md')).includes('(../../README.md)'));
+    assert.equal(r.residualFindings, 0);
+    assert.equal(r.heavyLinkWarning, false);
+    assert.ok(!existsSync(join(tmp, 'docs', 'b.md'))); // git followed the move
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('links move: heavy-linkage warning and tombstone stub', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-move-heavy-'));
+  try {
+    execFileSync('bash', ['-c', 'mkdir -p docs'], { cwd: tmp });
+    writeFileSync(join(tmp, 'docs', 'hub.md'), '# Hub\n');
+    for (let i = 0; i < 5; i++)
+      writeFileSync(join(tmp, `caller${i}.md`), `# C${i}\n\n[hub](docs/hub.md)\n`);
+    const r = moveDoc(tmp, 'docs/hub.md', 'docs/hub-renamed.md', { tombstone: true });
+    assert.equal(r.inboundTotal, 5);
+    assert.equal(r.heavyLinkWarning, true); // Article 10: MUST warn
+    assert.equal(r.tombstone, 'docs/hub.md');
+    assert.ok(readFileSync2(join(tmp, 'docs', 'hub.md')).includes('moved to [docs/hub-renamed.md](hub-renamed.md)'));
+    assert.equal(r.residualFindings, 0); // the stub's own link resolves too
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('plugin gate: the git-commit guard drives the staged form audit', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-plugin-'));
+  const plugin = resolve(import.meta.dirname, '..', 'plugin');
+  const env = { ...process.env, MTOOL_CORPUS: CORPUS, CLAUDE_PROJECT_DIR: tmp, CLAUDE_PLUGIN_ROOT: plugin };
+  const guard = (payload: object): number => {
+    try {
+      execFileSync(join(plugin, 'hooks', 'git-commit-guard.sh'), [], {
+        env,
+        input: JSON.stringify(payload),
+        stdio: ['pipe', 'ignore', 'ignore'],
+      });
+      return 0;
+    } catch (err) {
+      return (err as { status?: number }).status ?? -1;
+    }
+  };
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.2.0', description: 'Plugin gate.' });
+    sh(tmp, 'init', '-q');
+    sh(tmp, 'add', '-A');
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'scaffold');
+    // Non-commit commands pass straight through.
+    assert.equal(guard({ tool_input: { command: 'ls -la' } }), 0);
+    // Clean staged docs change: the audit runs through the hook path and passes.
+    execFileSync('bash', ['-c', 'echo "- [ ] item" >> docs/backlog.md'], { cwd: tmp });
+    sh(tmp, 'add', 'docs/backlog.md');
+    assert.equal(guard({ tool_input: { command: 'git commit -m "docs"' } }), 0);
+    // Source staged with nothing under docs/: W-003 violation blocks (exit 2).
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'docs');
+    execFileSync('bash', ['-c', 'mkdir -p src && echo "export {}" > src/x.ts'], { cwd: tmp });
+    sh(tmp, 'add', 'src/x.ts');
+    assert.equal(guard({ tool_input: { command: 'git commit -m "code"' } }), 2);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('plugin: SessionStart command injects the brief status', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-plugin-status-'));
+  const plugin = resolve(import.meta.dirname, '..', 'plugin');
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.2.0', description: 'Status hook.' });
+    const out = execFileSync(join(plugin, 'bin', 'mtool.sh'), ['status', '--brief', '--repo', tmp], {
+      env: { ...process.env, MTOOL_CORPUS: CORPUS },
+      encoding: 'utf8',
+    });
+    assert.ok(out.includes('compliance target 1.2.0'));
+    assert.ok(out.trim().split('\n').length <= 4);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 // ---------- the real corpus, when a checkout is available ----------

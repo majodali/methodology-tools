@@ -1,0 +1,11 @@
+{
+  "name": "methodology-tools",
+  "owner": { "name": "majodali" },
+  "plugins": [
+    {
+      "name": "methodology",
+      "source": "./plugin",
+      "description": "majodali methodology enforcement: mtool status/audit wiring — SessionStart classification injection, git-commit same-commit guard, and skills. Documents are the spec (Constitution Article 3); this plugin is machinery."
+    }
+  ]
+}
