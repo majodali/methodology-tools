@@ -107,11 +107,32 @@ since the owner's build green-light, 2026-08-19).
   dress; the scanner flagged its own test literal). Closes methodology
   Risk R1 (companion PR there). **Gate review pending.**
 
+- [x] **Chunk 4 — `census`, `audit deliver`, `audit semantic`** —
+  shipped: `mtool census` (`src/census.ts`) reconciles the Portfolio
+  register against observed repositories (GitHub API when reachable,
+  `--observed` file otherwise — enumeration-unavailable is itself a
+  finding) and local checkouts, emitting M-001 completeness
+  violations, unobservable-row warnings, summary-drift refresh
+  proposals, and implicit-C0 spot-check candidates; `mtool audit
+  deliver` (`src/deliver.ts`) mechanizes the audit process — current
+  finding fingerprint vs the project's own newest same-kind Audit-log
+  entry (machine digests compared on rule/severity/file, prose
+  baselines degraded honestly to rule/file or outcome counts with a
+  parse note), verdicts deliver-first / deliver-transition /
+  no-change, `--write` appends the formatted entry creating the
+  register on first delivery (PR-raising stays with the operator);
+  `mtool audit semantic` (`src/semantic.ts`) assembles the
+  adjudication packet — Article 8 call-outs, changes since the last
+  semantic audit, in-play checklist, document inventory, link/sandbox
+  state, Article 9 prompts — judgment-free by design. Gate evidence:
+  39 tests, and the first real census caught a live drift (allegro's
+  register row said pinned 1.0.0; the observed declaration is 1.1.0)
+  while `audit deliver` correctly read the day's delivered entries as
+  baselines (allegro: no-change) and drafted the tools repo's own
+  first entry. Closes methodology Risks R3 and R5 (companion PR
+  there). **Gate: census output awaits owner adjudication.**
+
 ## Upcoming
-- [ ] **Chunk 4 — `census` and `audit semantic` assembly** — gate:
-  first real census output adjudicated by owner at a review round.
-  Requires the audit-log register amendment. Closes methodology Risk
-  R3.
 - [ ] **Chunk 5 — `links move` and plugin wiring** — gate:
   plugin-installed project passes a full form audit driven entirely
   through hooks. Documents the external-reference limitation amendment.

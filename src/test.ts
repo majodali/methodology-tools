@@ -9,9 +9,12 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { constraints, inPlay, moreSpecific } from './applicability.js';
-import { buildAudit } from './audit.js';
+import { buildAudit, fingerprint } from './audit.js';
+import { reconcile } from './census.js';
 import { classify } from './classify.js';
+import { buildDelivery, parseBaseline } from './deliver.js';
 import { installHooks } from './hooks.js';
+import { assembleSemanticPacket } from './semantic.js';
 import { loadClassification } from './classification.js';
 import { checkLinks } from './links.js';
 import { slugify } from './markdown.js';
@@ -409,6 +412,107 @@ test('hooks install writes an executable pre-commit running the staged audit', (
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+// ---------- chunk 4: fingerprint, deliver, census, semantic assembly ----------
+
+test('fingerprint: dedupes, sorts, and excludes info findings', () => {
+  const fp = fingerprint([
+    { rule: 'K-003', severity: 'violation', message: 'x', file: 'BACKLOG.md' },
+    { rule: 'K-003', severity: 'violation', message: 'y', file: 'BACKLOG.md' },
+    { rule: 'Article 8', severity: 'warning', message: 'lag', file: 'docs/classification.md' },
+    { rule: 'Article 7', severity: 'info', message: 'sandbox', file: 'docs/notes.md' },
+  ]);
+  assert.deepEqual(fp, [
+    { rule: 'Article 8', severity: 'warning', file: 'docs/classification.md' },
+    { rule: 'K-003', severity: 'violation', file: 'BACKLOG.md' },
+  ]);
+});
+
+test('deliver: first delivery creates the register; second run is no-change', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-deliver-'));
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.1.0', description: 'Deliver test.' });
+    sh(tmp, 'init', '-q');
+    sh(tmp, 'add', '-A');
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'scaffold');
+    const first = buildDelivery(tmp, CORPUS, { write: true, date: '2026-08-21' });
+    assert.equal(first.verdict, 'deliver-first');
+    assert.ok(first.written && existsSync(first.written));
+    const second = buildDelivery(tmp, CORPUS, { date: '2026-08-21' });
+    assert.equal(second.verdict, 'no-change');
+    assert.equal(second.comparedOn, 'rule-severity-file');
+    // Introduce a finding (tracked .env) → transition.
+    writeFileSync(join(tmp, '.env'), 'TOKEN=x\n');
+    sh(tmp, 'add', '.env');
+    sh(tmp, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'oops');
+    const third = buildDelivery(tmp, CORPUS, { date: '2026-08-21' });
+    assert.equal(third.verdict, 'deliver-transition');
+    assert.ok(third.entry.includes('S-001'));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('deliver: prose baselines compare on (rule, file); pass baselines parse', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-baseline-'));
+  try {
+    execFileSync('bash', ['-c', 'mkdir -p docs'], { cwd: tmp });
+    writeFileSync(
+      join(tmp, 'docs', 'audits.md'),
+      '# Audit log\n\n- 2026-08-20 — form — full tree — 1 violation — K-003: `BACKLOG.md` (root Backlog)\n',
+    );
+    const b = parseBaseline(tmp, 'form');
+    assert.ok(b);
+    assert.equal(b!.pass, false);
+    assert.deepEqual(b!.pairs, [{ rule: 'K-003', file: 'BACKLOG.md' }]);
+    assert.ok(b!.parseNote?.includes('(rule, file)'));
+    writeFileSync(
+      join(tmp, 'docs', 'audits.md'),
+      '# Audit log\n\n- 2026-08-20 — form — full tree — pass (no findings) — —\n',
+    );
+    const p = parseBaseline(tmp, 'form');
+    assert.ok(p!.pass);
+    assert.equal(p!.pairs.length, 0);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('census reconcile: unregistered, unobservable, drift, spot-check', () => {
+  const rows = [
+    { project: 'alpha', location: 'x', summary: 'C2 / S0 / web-app / serverless-aws — pinned 1.1.0', notes: '' },
+    { project: 'beta', location: 'x', summary: 'implicit C0', notes: '' },
+    { project: 'ghost', location: 'x', summary: 'implicit C0', notes: '' },
+  ];
+  const observed = [{ name: 'alpha' }, { name: 'beta' }, { name: 'newcomer' }];
+  const checkouts = [{ name: 'alpha', summary: 'C2 / S1 / web-app / serverless-aws — pinned 1.2.0' }];
+  const findings = reconcile(rows, observed, checkouts);
+  const kinds = findings.map((f) => f.kind).sort();
+  assert.deepEqual(kinds, [
+    'spot-check-candidate', // beta: implicit C0, no checkout (ghost has no observed repo → unobservable, and also spot-check? ghost has no checkout too)
+    'spot-check-candidate',
+    'summary-drift', // alpha: S0→S1, pin moved
+    'unobservable-row', // ghost
+    'unregistered-repo', // newcomer
+  ]);
+  const drift = findings.find((f) => f.kind === 'summary-drift')!;
+  assert.equal(drift.proposedSummary, 'C2 / S1 / web-app / serverless-aws — pinned 1.2.0');
+  assert.equal(findings.find((f) => f.kind === 'unregistered-repo')!.severity, 'violation');
+});
+
+test('census reconcile: no enumeration source is itself a finding', () => {
+  const findings = reconcile([], null, []);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]!.kind, 'enumeration-unavailable');
+});
+
+test('semantic packet assembles the adjudication context, judgment-free', () => {
+  const packet = assembleSemanticPacket(resolve(FIXTURES, 'audited-c1'), CORPUS);
+  assert.ok(packet.includes('# Semantic-audit packet'));
+  assert.ok(packet.includes('## In-play rule checklist'));
+  assert.ok(packet.includes('Last semantic audit: 2020-01-01'));
+  assert.ok(packet.includes('adjudication is human'));
 });
 
 // ---------- the real corpus, when a checkout is available ----------

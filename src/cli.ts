@@ -7,9 +7,12 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { buildAudit, renderAudit } from './audit.js';
+import { buildCensus, renderCensus } from './census.js';
 import { classify, renderClassifyResult } from './classify.js';
+import { buildDelivery, renderDelivery } from './deliver.js';
 import { installHooks } from './hooks.js';
 import { checkLinks, renderLinkReport } from './links.js';
+import { assembleSemanticPacket } from './semantic.js';
 import { buildStatus, renderHuman } from './status.js';
 import { TARGETS, TYPES, ProjectType, Target } from './types.js';
 
@@ -28,6 +31,14 @@ function usage(): never {
       '                    mechanically checkable subset of in-play rules',
       '  hooks install     write a git pre-commit hook running the staged',
       '                    form audit (same-commit guard, W-003)',
+      '  audit deliver     compare-and-deliver per the audit process: compute',
+      '                    the finding fingerprint, compare with the project',
+      "                    Audit log's baseline, emit the due entry (--write",
+      '                    appends it; raising the PR stays with the operator)',
+      '  audit semantic    assemble the semantic-audit packet (context only —',
+      '                    adjudication is human)',
+      '  census            reconcile the Portfolio register against observed',
+      '                    repos and local checkouts (M-001/M-002)',
       '',
       'common options:',
       '  --repo <path>     project to operate on (default: cwd)',
@@ -38,7 +49,10 @@ function usage(): never {
       'status options:   --brief',
       'classify options: --tier C0..C3  --slevel S0..S2  --type <type>',
       '                  --target <target>  --pin <X.Y.Z>  --description <text>',
-      'audit options:    --staged | --changed-since <ref>',
+      'audit options:    --staged | --changed-since <ref>  (form)',
+      '                  --write  (deliver)',
+      'census options:   --observed <file: JSON array or owner/name lines>',
+      '                  --checkouts <dir of checkouts> (repeatable)',
     ].join('\n'),
   );
   process.exit(2);
@@ -75,6 +89,9 @@ const { values, positionals } = parseArgs({
     description: { type: 'string' },
     staged: { type: 'boolean', default: false },
     'changed-since': { type: 'string' },
+    write: { type: 'boolean', default: false },
+    observed: { type: 'string' },
+    checkouts: { type: 'string', multiple: true },
   },
 });
 
@@ -117,6 +134,24 @@ if (command === 'status') {
   if (values.json) console.log(JSON.stringify(report, null, 2));
   else console.log(renderAudit(report));
   // Nonzero exit on MUST violations; warnings/info never block.
+  process.exit(report.findings.some((f) => f.severity === 'violation') ? 1 : 0);
+} else if (command === 'audit' && positionals[1] === 'deliver') {
+  const corpus = findCorpus(values.corpus, repo);
+  const date = new Date().toISOString().slice(0, 10);
+  const report = buildDelivery(repo, corpus, { write: values.write, date });
+  if (values.json) console.log(JSON.stringify(report, null, 2));
+  else console.log(renderDelivery(report));
+} else if (command === 'audit' && positionals[1] === 'semantic') {
+  const corpus = findCorpus(values.corpus, repo);
+  console.log(assembleSemanticPacket(repo, corpus));
+} else if (command === 'census') {
+  const corpus = findCorpus(values.corpus, repo);
+  const report = buildCensus(corpus, {
+    ...(values.observed ? { observedFile: values.observed } : {}),
+    checkoutDirs: values.checkouts ?? [],
+  });
+  if (values.json) console.log(JSON.stringify(report, null, 2));
+  else console.log(renderCensus(report));
   process.exit(report.findings.some((f) => f.severity === 'violation') ? 1 : 0);
 } else if (command === 'hooks' && positionals[1] === 'install') {
   const corpus = findCorpus(values.corpus, repo);
