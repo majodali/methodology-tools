@@ -1,0 +1,6 @@
+{
+  "name": "methodology",
+  "description": "majodali methodology wiring: mtool status at SessionStart (the binding contract read every session by construction), the W-003 same-commit guard on git commit, and status/audit/classify skills. Everything here shells to mtool — no rule is implemented twice (tools plan: one CLI, three surfaces).",
+  "version": "0.1.0",
+  "author": { "name": "majodali" }
+}

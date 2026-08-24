@@ -12,6 +12,7 @@ import { classify, renderClassifyResult } from './classify.js';
 import { buildDelivery, renderDelivery } from './deliver.js';
 import { installHooks } from './hooks.js';
 import { checkLinks, renderLinkReport } from './links.js';
+import { moveDoc, renderMove } from './move.js';
 import { assembleSemanticPacket } from './semantic.js';
 import { buildStatus, renderHuman } from './status.js';
 import { TARGETS, TYPES, ProjectType, Target } from './types.js';
@@ -27,6 +28,11 @@ function usage(): never {
       '                    block, and required governance docs from the corpus',
       '                    skeletons (interactive where flags are omitted)',
       '  links check       deterministic link integrity across the repo',
+      '  links move <from> <to>',
+      '                    move a document: inbound links rewritten, own links',
+      '                    re-based, heavy-linkage warning, --tombstone stub',
+      '                    (Article 10; external-reference knowledge is',
+      '                    operator-supplied until the census index exists)',
       '  audit form        the daily deterministic audit (Article 9): the',
       '                    mechanically checkable subset of in-play rules',
       '  hooks install     write a git pre-commit hook running the staged',
@@ -92,6 +98,7 @@ const { values, positionals } = parseArgs({
     write: { type: 'boolean', default: false },
     observed: { type: 'string' },
     checkouts: { type: 'string', multiple: true },
+    tombstone: { type: 'boolean', default: false },
   },
 });
 
@@ -135,6 +142,14 @@ if (command === 'status') {
   else console.log(renderAudit(report));
   // Nonzero exit on MUST violations; warnings/info never block.
   process.exit(report.findings.some((f) => f.severity === 'violation') ? 1 : 0);
+} else if (command === 'links' && positionals[1] === 'move') {
+  const from = positionals[2];
+  const to = positionals[3];
+  if (!from || !to) usage();
+  const report = moveDoc(repo, from, to, { tombstone: values.tombstone });
+  if (values.json) console.log(JSON.stringify(report, null, 2));
+  else console.log(renderMove(report));
+  process.exit(report.residualFindings === 0 ? 0 : 1);
 } else if (command === 'audit' && positionals[1] === 'deliver') {
   const corpus = findCorpus(values.corpus, repo);
   const date = new Date().toISOString().slice(0, 10);

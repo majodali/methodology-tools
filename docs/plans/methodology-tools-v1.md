@@ -1,7 +1,8 @@
 # methodology-tools v1
 
-Status: active — chunk boundaries approved as proposed; build
-green-lit by the owner 2026-08-19 (W-001)
+Status: closed — all five chunks delivered (2026-08-19 → 2026-08-24);
+the Backlog's checked entries supersede this plan as the record
+(close-out per K-007)
 
 Outcome under development: a single CLI, `mtool`, that discharges the
 methodology's deterministic audit duties and makes adoption cheaper than
