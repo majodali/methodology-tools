@@ -158,4 +158,18 @@ since the owner's build green-light, 2026-08-19).
   this Backlog is the record. Closes methodology Risk R4 (companion
   PR there). **Gate review pending.**
 
+- [x] **Migrated to 1.3.0 and joined the `methodology` family** —
+  v1.3.0 tagged 2026-08-25 (project families, template type and
+  Q-001, custom definitions by citation, links-move limitation); all
+  four amendments ship migration-note: none, so the pin bump is the
+  whole migration. The Classification now declares
+  `Family: methodology (member)` — the grouping this project's own
+  chunk-3 access ruling motivated: family cohesion via the lead's
+  corpus and change process, shared constructs adopted by citation,
+  this repo's Classification and audits staying its own. The
+  amendment-controlled type enum gains `template` in `src/types.ts`
+  (the clean-parse gate flagged Q-001's `[type: template]` tag as the
+  correct signal — Article 3: the documents are the spec), and the
+  real-corpus expected-IDs assertion now includes Q-001.
+
 ## Upcoming
