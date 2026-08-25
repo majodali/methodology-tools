@@ -14,6 +14,7 @@ export const TYPES = [
   'ops',
   'docs-corpus',
   'methodology-corpus',
+  'template', // v1.3.0: a project whose shipped content instantiates derived projects
 ] as const;
 export const TARGETS = [
   'none/local',

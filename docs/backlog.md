@@ -166,6 +166,10 @@ since the owner's build green-light, 2026-08-19).
   `Family: methodology (member)` — the grouping this project's own
   chunk-3 access ruling motivated: family cohesion via the lead's
   corpus and change process, shared constructs adopted by citation,
-  this repo's Classification and audits staying its own.
+  this repo's Classification and audits staying its own. The
+  amendment-controlled type enum gains `template` in `src/types.ts`
+  (the clean-parse gate flagged Q-001's `[type: template]` tag as the
+  correct signal — Article 3: the documents are the spec), and the
+  real-corpus expected-IDs assertion now includes Q-001.
 
 ## Upcoming

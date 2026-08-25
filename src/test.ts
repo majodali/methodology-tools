@@ -626,7 +626,7 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
     assert.deepEqual(findings, []);
     assert.ok(rules.length >= 22, `expected ≥22 rules, got ${rules.length}`);
     const ids = rules.map((r) => r.id);
-    for (const id of ['K-001', 'K-009', 'W-001', 'W-007', 'M-001', 'M-003', 'M-004', 'S-001', 'S-002'])
+    for (const id of ['K-001', 'K-009', 'W-001', 'W-007', 'M-001', 'M-003', 'M-004', 'Q-001', 'S-001', 'S-002'])
       assert.ok(ids.includes(id), `missing ${id}`);
   });
 
