@@ -643,12 +643,14 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
     assert.ok(!ids.includes('K-004') && !ids.includes('K-007') && !ids.includes('W-004'));
   });
 
-  test('real corpus: delta-ratio is honest about the missing semantic audit', () => {
+  test('real corpus: delta-ratio reads the recorded semantic-audit baseline', () => {
     const report = buildStatus(realCorpus, realCorpus);
-    // docs/audits.md exists (1.1.0) but holds only the bootstrap form
-    // entry — no semantic audit yet.
-    assert.equal(report.deltaRatio.value, null);
-    assert.ok(report.deltaRatio.note.includes('no semantic audit recorded yet'));
+    // Review round 1 (2026-08-30) recorded the corpus's first semantic
+    // audit, so delta-ratio must now be a real ratio, not the honest
+    // "none yet" null the pre-round corpus produced.
+    assert.ok(report.deltaRatio.value !== null, 'expected a computed delta-ratio');
+    assert.ok(report.deltaRatio.value >= 0 && report.deltaRatio.value <= 1);
+    assert.ok(report.deltaRatio.note.includes('since the semantic audit'));
   });
 
   test('real corpus: links check passes across the whole methodology tree', () => {
