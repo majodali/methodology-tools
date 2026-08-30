@@ -172,6 +172,11 @@ since the owner's build green-light, 2026-08-19).
   correct signal — Article 3: the documents are the spec), and the
   real-corpus expected-IDs assertion now includes Q-001.
 
+- [x] **Migrated to methodology 1.4.0** — 2026-08-30; migration
+  notes none mandatory, so the pin bump is the whole migration.
+  The v1.4.0 content lands here as queued work: style checks (P-
+  rules), supersession-marker greps (K-010), Workflow parser.
+
 ## Upcoming
 
 - [ ] **Workflow declaration parser** — parse the canonical format the
