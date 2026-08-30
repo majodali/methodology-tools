@@ -173,3 +173,10 @@ since the owner's build green-light, 2026-08-19).
   real-corpus expected-IDs assertion now includes Q-001.
 
 ## Upcoming
+
+- [ ] **Workflow declaration parser** — parse the canonical format the
+  v1.4.0 candidate's Workflow-declaration-format amendment defines
+  (`stages: a → b → c; live = <stage>; backlog default: checked ⇒ <s1>,
+  unchecked ⇒ <s2>`), derive `deployed` from Classification + Backlog
+  designations, and clear the standing tool-unreadable info finding
+  for conforming declarations (non-conforming declarations keep it).
