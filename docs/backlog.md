@@ -184,6 +184,17 @@ since the owner's build green-light, 2026-08-19).
   command's output; a test placeholder body). Regression test
   added; a real-shaped body still flags. 44 tests pass.
 
+- [ ] **Custom-type checker extension point** (inbound proposal,
+  awaiting adjudication) —
+  [proposals/custom-type-checker-extension.md](proposals/custom-type-checker-extension.md):
+  project-orchestrator asks that `mtool audit form` discover, run, and
+  fold in a checker a defining project declares alongside its
+  Article-7 custom type, so citation-defined types get the same
+  mechanical checking as standard ones. Five design questions to
+  settle (discovery, execution trust, finding schema, versioning,
+  unavailability), each with the proposer's recommendation. No code
+  written pending the maintainer's answers.
+
 ## Upcoming
 
 - [ ] **Workflow declaration parser** — parse the canonical format the
