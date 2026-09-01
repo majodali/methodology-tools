@@ -48,7 +48,13 @@ export interface AuditReport {
 const SECRET_FILE_RE = /(^|\/)(\.env(\.(?!example|template|sample)[^/]+)?|id_rsa[^/]*|[^/]+\.pem)$/;
 const SECRET_CONTENT_RES: [RegExp, string][] = [
   [/AKIA[0-9A-Z]{16}/, 'AWS access key id'],
-  [/-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY( BLOCK)?-----/, 'private key material'],
+  // A real PEM block has base64 body lines after the header; a bare
+  // header is documentation or a test placeholder (review round 1's
+  // service-repo false positives: a runbook describing a verify
+  // command's output, and a test literal with body "fake").
+  // Literal \n escapes count as separators so string literals with
+  // real key bodies still match.
+  [/-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY( BLOCK)?-----(?:\s|\\n)*[A-Za-z0-9+\/=]{40,}/, 'private key material'],
 ];
 const PLAN_STATUS_RE = /^(draft|active|superseded|closed)\b/i;
 const DECISION_STATUS_RE = /\b(accepted|superseded|deprecated)\b/i;

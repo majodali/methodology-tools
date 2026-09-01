@@ -183,6 +183,13 @@ since the owner's build green-light, 2026-08-19).
   CHANGELOG and concepts.md. Spans are blanked before link
   extraction (columns preserved); regression test added.
 
+- [x] **S-001 scanner: key headers need a body** — the private-key
+  pattern now requires a base64-shaped body after the header;
+  motivating instance: two false positives on
+  project-orchestrator-service (a runbook documenting a verify
+  command's output; a test placeholder body). Regression test
+  added; a real-shaped body still flags. 44 tests pass.
+
 ## Upcoming
 
 - [ ] **Workflow declaration parser** — parse the canonical format the
