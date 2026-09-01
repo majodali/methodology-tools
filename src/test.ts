@@ -401,6 +401,30 @@ test('audit form: S-001 catches tracked credential files and key patterns', () =
   }
 });
 
+test('audit form: S-001 ignores bare key headers with no base64 body', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-audit-keyhdr-'));
+  try {
+    classify(tmp, CORPUS, { ctier: 1, slevel: 1, type: 'backend-service', target: 'serverless-aws', pin: '1.1.0', description: 'Key-header test.' });
+    sh(tmp, 'init', '-q');
+    // The review-round service-repo false positives: a runbook that
+    // documents what a verify command prints, and a test literal with
+    // a placeholder body. Header assembled at runtime (scanner audits
+    // this repo too); neither carries a base64 body, so neither flags.
+    const hdr = ['-----BEGIN', 'PRIVATE', 'KEY-----'].join(' ');
+    writeFileSync(join(tmp, 'docs', 'runbook.md'), `# Runbook\n\nVerify: the command prints \`${hdr}\`.\n`);
+    writeFileSync(join(tmp, 'sample.test.ts'), `const k = "${hdr}\\nfake\\n-----END PRIVATE KEY-----";\n`);
+    // A key with a real-shaped base64 body still flags.
+    const body = 'QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9w';
+    writeFileSync(join(tmp, 'leak.txt'), `${hdr}\n${body}\n`);
+    sh(tmp, 'add', '-A');
+    const report = buildAudit(tmp, CORPUS, { mode: 'full' });
+    const s = report.findings.filter((f) => f.rule === 'S-001' && f.severity === 'violation');
+    assert.deepEqual(s.map((f) => f.file), ['leak.txt']);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('hooks install writes an executable pre-commit running the staged audit', () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mtool-hooks-'));
   try {
