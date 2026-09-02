@@ -184,6 +184,13 @@ since the owner's build green-light, 2026-08-19).
   command's output; a test placeholder body). Regression test
   added; a real-shaped body still flags. 44 tests pass.
 
+- [x] **Migrated to methodology 1.5.0** — 2026-09-02; the pin bump
+  plus this release's one migration note: `CLAUDE.md` now carries
+  W-008's prescribed reporting block verbatim, copied from the rule
+  and verified byte-identical. The other five amendments ship
+  migration-note `none`. The v1.5.0 content lands here as queued
+  work: the bootstrap-cache drift check, below.
+
 - [ ] **Custom-type checker extension point** (inbound proposal,
   awaiting adjudication) —
   [proposals/custom-type-checker-extension.md](proposals/custom-type-checker-extension.md):
@@ -197,9 +204,54 @@ since the owner's build green-light, 2026-08-19).
 
 ## Upcoming
 
+- [x] **Stale Workflow-format claims in tool output and comments** —
+  the `Workflow declared` info finding told readers "the declaration
+  format is undefined (methodology backlog open item)", and two source
+  comments said the same. Methodology v1.4.0 defined the canonical
+  format; only this tool's parser is missing. Corrected at the 1.5.0
+  migration to say exactly that. Found by running the form audit on
+  in-real-life, whose Classification declares a Workflow.
+
 - [ ] **Workflow declaration parser** — parse the canonical format the
   v1.4.0 candidate's Workflow-declaration-format amendment defines
   (`stages: a → b → c; live = <stage>; backlog default: checked ⇒ <s1>,
   unchecked ⇒ <s2>`), derive `deployed` from Classification + Backlog
   designations, and clear the standing tool-unreadable info finding
   for conforming declarations (non-conforming declarations keep it).
+
+- [ ] **W-008 bootstrap-cache drift check** — `mtool audit form`
+  compares a project's `CLAUDE.md` copy of W-008's prescribed
+  reporting block against the fenced block in the rule's **Required
+  bootstrap text** field, and reports any difference as drift. W-008
+  names the check as an audit duty; every migrated project now
+  carries a copy, so the check has real inputs. Scope: presence,
+  byte-equality, and the surrounding heading; a project with no Agent
+  bootstrap owes nothing.
+
+- [ ] **Links inside verbatim quotations of foreign text** — the link
+  checker resolves every relative link it finds, including links
+  carried inside a blockquote that quotes another repository's
+  document byte-exactly. project-orchestrator's `docs/proposals/`
+  quote methodology rule text verbatim, so six methodology-relative
+  links (`../style.md`, `working-agreement.md#w-003-…`,
+  `prose.md#p-004-…`) resolve nowhere in that repo and the form audit
+  reports six Article 10 violations there. Rewriting the links would
+  break the byte-exactness the quoting documents assert, so the fix
+  belongs on this side: either skip links inside a verbatim-quotation
+  region, as extraction already skips inline code spans, or agree a
+  house convention for quoting foreign text and check against it.
+  Owner decision pending; the finding is tracked in
+  project-orchestrator's Backlog meanwhile.
+
+- [ ] **Deviation parser splits a fielded entry into several entries**
+  — a deviation recorded as a heading plus labeled field bullets
+  (**Rule**, **Deviating practice**, **Rationale**, **Recorded**,
+  **Disposition**) parses as one deviation per bullet, and every
+  bullet whose *first line* does not carry a rule id draws
+  "deviation entry lacks the rule it overrides". allegro's D-1 is
+  recorded that way and produces three spurious Article 4 violations
+  at every audit. The fielded shape is the one the style guide asks
+  for (rule bodies are labeled), so the parser should read a
+  deviation as a heading and its following bullets, taking the rule
+  id from the **Rule** field. Found at allegro's 1.5.0 migration;
+  tracked there as B-133.

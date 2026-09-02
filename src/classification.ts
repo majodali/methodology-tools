@@ -136,9 +136,10 @@ export function loadClassification(repoRoot: string): Classification {
   if (wRaw !== null && !/^none\b/i.test(wRaw)) {
     workflow = 'declared';
     findings.push(
-      'classification: Workflow declared, but the declaration format is undefined ' +
-        '(methodology backlog open item: "Workflow declaration format") — ' +
-        '`deployed` cannot be derived and is treated as false',
+      'classification: Workflow declared, but this tool cannot yet parse the ' +
+        'declaration (methodology v1.4.0 defines the canonical format; the ' +
+        'parser is queued in this repo\'s backlog) — `deployed` cannot be ' +
+        'derived and is treated as false',
     );
   }
 
