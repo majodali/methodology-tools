@@ -219,3 +219,18 @@ since the owner's build green-light, 2026-08-19).
   carries a copy, so the check has real inputs. Scope: presence,
   byte-equality, and the surrounding heading; a project with no Agent
   bootstrap owes nothing.
+
+- [ ] **Links inside verbatim quotations of foreign text** — the link
+  checker resolves every relative link it finds, including links
+  carried inside a blockquote that quotes another repository's
+  document byte-exactly. project-orchestrator's `docs/proposals/`
+  quote methodology rule text verbatim, so six methodology-relative
+  links (`../style.md`, `working-agreement.md#w-003-…`,
+  `prose.md#p-004-…`) resolve nowhere in that repo and the form audit
+  reports six Article 10 violations there. Rewriting the links would
+  break the byte-exactness the quoting documents assert, so the fix
+  belongs on this side: either skip links inside a verbatim-quotation
+  region, as extraction already skips inline code spans, or agree a
+  house convention for quoting foreign text and check against it.
+  Owner decision pending; the finding is tracked in
+  project-orchestrator's Backlog meanwhile.
