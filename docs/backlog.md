@@ -184,6 +184,13 @@ since the owner's build green-light, 2026-08-19).
   command's output; a test placeholder body). Regression test
   added; a real-shaped body still flags. 44 tests pass.
 
+- [x] **Migrated to methodology 1.5.0** — 2026-09-02; the pin bump
+  plus this release's one migration note: `CLAUDE.md` now carries
+  W-008's prescribed reporting block verbatim, copied from the rule
+  and verified byte-identical. The other five amendments ship
+  migration-note `none`. The v1.5.0 content lands here as queued
+  work: the bootstrap-cache drift check, below.
+
 - [ ] **Custom-type checker extension point** (inbound proposal,
   awaiting adjudication) —
   [proposals/custom-type-checker-extension.md](proposals/custom-type-checker-extension.md):
@@ -203,3 +210,12 @@ since the owner's build green-light, 2026-08-19).
   unchecked ⇒ <s2>`), derive `deployed` from Classification + Backlog
   designations, and clear the standing tool-unreadable info finding
   for conforming declarations (non-conforming declarations keep it).
+
+- [ ] **W-008 bootstrap-cache drift check** — `mtool audit form`
+  compares a project's `CLAUDE.md` copy of W-008's prescribed
+  reporting block against the fenced block in the rule's **Required
+  bootstrap text** field, and reports any difference as drift. W-008
+  names the check as an audit duty; every migrated project now
+  carries a copy, so the check has real inputs. Scope: presence,
+  byte-equality, and the surrounding heading; a project with no Agent
+  bootstrap owes nothing.
