@@ -204,6 +204,14 @@ since the owner's build green-light, 2026-08-19).
 
 ## Upcoming
 
+- [x] **Stale Workflow-format claims in tool output and comments** —
+  the `Workflow declared` info finding told readers "the declaration
+  format is undefined (methodology backlog open item)", and two source
+  comments said the same. Methodology v1.4.0 defined the canonical
+  format; only this tool's parser is missing. Corrected at the 1.5.0
+  migration to say exactly that. Found by running the form audit on
+  in-real-life, whose Classification declares a Workflow.
+
 - [ ] **Workflow declaration parser** — parse the canonical format the
   v1.4.0 candidate's Workflow-declaration-format amendment defines
   (`stages: a → b → c; live = <stage>; backlog default: checked ⇒ <s1>,
