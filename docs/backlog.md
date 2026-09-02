@@ -242,3 +242,16 @@ since the owner's build green-light, 2026-08-19).
   house convention for quoting foreign text and check against it.
   Owner decision pending; the finding is tracked in
   project-orchestrator's Backlog meanwhile.
+
+- [ ] **Deviation parser splits a fielded entry into several entries**
+  — a deviation recorded as a heading plus labeled field bullets
+  (**Rule**, **Deviating practice**, **Rationale**, **Recorded**,
+  **Disposition**) parses as one deviation per bullet, and every
+  bullet whose *first line* does not carry a rule id draws
+  "deviation entry lacks the rule it overrides". allegro's D-1 is
+  recorded that way and produces three spurious Article 4 violations
+  at every audit. The fielded shape is the one the style guide asks
+  for (rule bodies are labeled), so the parser should read a
+  deviation as a heading and its following bullets, taking the rule
+  id from the **Rule** field. Found at allegro's 1.5.0 migration;
+  tracked there as B-133.
