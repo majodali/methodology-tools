@@ -75,8 +75,9 @@ export interface Classification {
   target: Target;
   /** Pinned methodology version; null = latest (legal at C0 only). */
   pinned: string | null;
-  /** Workflow declaration format is methodology open item 4; until it is
-   *  defined we can only distinguish "none declared" from "declared". */
+  /** Methodology v1.4.0 defines the canonical Workflow declaration format,
+   *  but until the parser ships we can only distinguish "none declared"
+   *  from "declared". */
   workflow: 'none' | 'declared';
   deviations: DeviationEntry[];
   customDefinitions: string[];
@@ -97,8 +98,8 @@ export interface ProjectState {
 export function deriveState(c: Classification): ProjectState {
   const deployable = c.target !== 'none/local';
   // `deployed` needs a declared Workflow plus a Backlog entry at a live
-  // stage. The Workflow declaration format is undefined (methodology
-  // open item 4), so with any declaration we still cannot read stages:
+  // stage. Methodology v1.4.0 defines the canonical declaration format,
+  // but the parser for it is still queued, so we cannot read stages:
   // deployed stays false and classification parsing raises a finding.
   const deployed = false;
   return {
