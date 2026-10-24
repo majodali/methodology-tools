@@ -97,7 +97,11 @@ export function parseDoc(path: string): Doc {
     const s = raw.match(/^(?:>\s*)?Status:\s*(.+)$/);
     if (s) statusLines.push({ value: s[1]!.replace(/[*_`]/g, '').trim(), line });
 
-    for (const m of raw.matchAll(LINK_RE)) {
+    // Inline code spans are literal text, not markup: Allegro's own
+    // syntax (`apply[e: Effect](…)`) reads as a markdown link if spans
+    // are scanned. Blank spans with spaces so link columns hold.
+    const linkable = raw.replace(/`[^`]*`/g, (c) => ' '.repeat(c.length));
+    for (const m of linkable.matchAll(LINK_RE)) {
       links.push({ text: m[1]!, target: m[2]!, line });
     }
   });

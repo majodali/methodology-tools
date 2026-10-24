@@ -191,6 +191,21 @@ test('a conflict surviving 2.3 is a corpus defect, owner-ruled (2.4)', () => {
   assert.equal(r.outcome, 'corpus-defect');
 });
 
+test('links: inline code spans are not scanned for links', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-links-code-'));
+  try {
+    // Allegro's syntax in prose: a code span that reads as a markdown
+    // link if spans are scanned. The real link after it must still be
+    // checked (and here, still be broken).
+    writeFileSync(join(tmp, 'doc.md'), 'Call `apply[e: Effect](x)` then see [gone](missing.md).\n');
+    const report = checkLinks(tmp);
+    assert.equal(report.findings.length, 1);
+    assert.equal(report.findings[0]!.target, 'missing.md');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 // ---------- status end-to-end over the fixture corpus ----------
 
 test('status: full C2 fixture against the fixture corpus', () => {

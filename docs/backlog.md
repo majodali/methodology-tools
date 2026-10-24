@@ -177,6 +177,12 @@ since the owner's build green-light, 2026-08-19).
   The v1.4.0 content lands here as queued work: style checks (P-
   rules), supersession-marker greps (K-010), Workflow parser.
 
+- [x] **Link checker skips inline code spans** — spans are literal
+  text, not markup; motivating instance: Allegro syntax in prose
+  (`apply[e: Effect](…)`) read as two dangling links in allegro's
+  CHANGELOG and concepts.md. Spans are blanked before link
+  extraction (columns preserved); regression test added.
+
 - [x] **S-001 scanner: key headers need a body** — the private-key
   pattern now requires a base64-shaped body after the header;
   motivating instance: two false positives on
