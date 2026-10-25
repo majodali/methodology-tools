@@ -28,6 +28,8 @@ export interface Doc {
   path: string;
   lines: string[];
   headings: Heading[];
+  /** Explicit HTML anchors: every id="…" attribute outside code fences (e.g. `<a id="def-term"></a>` on a vocabulary row). */
+  anchors: string[];
   links: Link[];
   /** All `Status: ...` designation lines outside code fences. */
   statusLines: StatusLine[];
@@ -65,6 +67,7 @@ const LINK_RE = /(?<!!)\[([^\]]*)\]\(([^)\s]+)\)/g;
 export function parseDoc(path: string): Doc {
   const lines = readFileSync(path, 'utf8').split('\n');
   const headings: Heading[] = [];
+  const anchors: string[] = [];
   const links: Link[] = [];
   const statusLines: StatusLine[] = [];
   const slugCounts = new Map<string, number>();
@@ -77,6 +80,10 @@ export function parseDoc(path: string): Doc {
       return;
     }
     if (inFence) return;
+
+    // Explicit anchors: a project may give a table row or a term a stable
+    // id (`<a id="def-…"></a>`); a link to `file#def-…` resolves to it.
+    for (const a of raw.matchAll(/\bid="([^"]+)"/g)) anchors.push(a[1]!);
 
     const h = raw.match(/^(#{1,6})\s+(.*)$/);
     if (h) {
@@ -106,5 +113,5 @@ export function parseDoc(path: string): Doc {
     }
   });
 
-  return { path, lines, headings, links, statusLines };
+  return { path, lines, headings, anchors, links, statusLines };
 }

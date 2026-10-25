@@ -4,7 +4,7 @@
 // Runner-native, no framework (methodology practice C2).
 
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -708,3 +708,17 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
 }
 
 console.log(`\n${passed} tests passed`);
+
+// Explicit HTML anchors resolve as link targets (communication-pipeline's
+// vocabulary rows carry <a id="def-…"></a>; the pilot links first uses to them).
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mtool-anchors-'));
+  mkdirSync(join(dir, 'docs'), { recursive: true });
+  writeFileSync(join(dir, 'docs', 'vocabulary.md'), '# Vocabulary\n\n| Term | Meaning |\n|---|---|\n| <a id="def-widget"></a>Widget | a thing |\n');
+  writeFileSync(join(dir, 'docs', 'note.md'), '# Note\n\nA [widget](vocabulary.md#def-widget) and a [missing](vocabulary.md#def-gadget).\n');
+  writeFileSync(join(dir, 'README.md'), '# t\n');
+  const r = checkLinks(dir);
+  const problems = r.findings.map((f) => `${f.problem}:${f.target}`);
+  assert.deepEqual(problems, ['missing-anchor:vocabulary.md#def-gadget'], 'explicit id anchors resolve; a missing one is still reported');
+  console.log('ok   links: explicit <a id> anchors resolve as link targets');
+}

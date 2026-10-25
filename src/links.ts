@@ -37,7 +37,8 @@ export function checkLinks(repo: string): LinkReport {
   const slugsOf = (path: string): Set<string> => {
     let s = slugCache.get(path);
     if (!s) {
-      s = new Set(parseDoc(path).headings.map((h) => h.slug));
+      const doc = parseDoc(path);
+      s = new Set([...doc.headings.map((h) => h.slug), ...doc.anchors]);
       slugCache.set(path, s);
     }
     return s;
