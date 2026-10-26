@@ -49,7 +49,7 @@ export interface IRDoc {
 const ELEMENT_RE = /^([TCGREA])(\d+)\.\s+(.*)$/;
 const H2_RE = /^##\s+(.+?)\s*$/;
 const PROV_RE = /\[(decided|proposed|inferred)(?::\s*([^\]]*))?\]\s*$/;
-const HEADER_RE = /^(Reader|Purpose|Status|Source|Normative):\s*(.*)$/;
+const HEADER_RE = /^(Reader|Purpose|Status|Source|Normative|Footprint):\s*(.*)$/;
 
 export function parseIR(text: string): IRDoc {
   const lines = text.split(/\r?\n/);
@@ -187,6 +187,27 @@ export function lintIR(text: string, opts: IRLintOptions = {}): IRLintResult {
   if (!READER_RE.test(reader)) add('CK-07', 1, `Reader header is not a catalog identifier: "${reader}"`);
   if (!/^(report|document)\b/.test(purpose))
     add('CK-07', 1, `Purpose header must start with "report" or "document": "${purpose}"`);
+
+  // CK-12: identifiers are unique within the document (specification,
+
+  // Element kinds).
+
+  {
+
+    const seen = new Map<string, number>();
+
+    for (const e of ir.elements) {
+
+      const prev = seen.get(e.id);
+
+      if (prev !== undefined) add('CK-12', e.line, `${e.id} is already used at line ${prev}`);
+
+      else seen.set(e.id, e.line);
+
+    }
+
+  }
+
 
   // CK-10: the sections run Terms, Claims, Relations, Evidence, Asks.
   const kinds = ir.sections.map((s) => sectionKind(s.title));
