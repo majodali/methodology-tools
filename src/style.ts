@@ -180,6 +180,7 @@ export function lintProseText(text: string, opts: ProseLintOptions = {}): StyleF
   // SP-24: a link to a #def- anchor resolves.
   if (file)
     for (const m of text.matchAll(/\]\(([^)\s]*#def-[\w-]+)\)/g)) {
+      if (/^https?:/.test(m[1]!)) continue; // another repository's anchor: not checkable offline
       if (!anchorExists(m[1]!, file)) add('SP-24', 'warning', text.slice(0, m.index).split('\n').length, `link to ${m[1]} does not resolve`);
     }
 

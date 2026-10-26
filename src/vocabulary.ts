@@ -51,7 +51,7 @@ export function vocabularyEntries(file: string, into: Vocabulary = new Map()): V
     if (inFence) continue;
 
     const row = TABLE_ROW_RE.exec(line);
-    if (row && !/^(Term|---)/.test(row[2]!)) {
+    if (row && !/^(Term|---)\s*$/.test(row[2]!)) {
       // A table row: term · meaning · status · site. A list entry whose
       // status cell is absent is the corpus's own register: decided.
       addEntry(into, row[2]!, row[1] ?? null, statusOf(row[4]!));
