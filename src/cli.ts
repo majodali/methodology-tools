@@ -2,19 +2,22 @@
 // MUST violations. Surfaces decide severity handling, not the checks
 // (tools plan, design decisions).
 
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
-import { buildAudit, renderAudit } from './audit.js';
+import { AuditFinding, buildAudit, renderAudit } from './audit.js';
 import { buildCensus, renderCensus } from './census.js';
 import { classify, renderClassifyResult } from './classify.js';
 import { buildDelivery, renderDelivery } from './deliver.js';
 import { installHooks } from './hooks.js';
+import { lintIR } from './ir.js';
 import { checkLinks, renderLinkReport } from './links.js';
+import { markdownFiles } from './markdown.js';
 import { moveDoc, renderMove } from './move.js';
 import { assembleSemanticPacket } from './semantic.js';
 import { buildStatus, renderHuman } from './status.js';
+import { lintProse, loadVocabulary } from './style.js';
 import { TARGETS, TYPES, ProjectType, Target } from './types.js';
 
 function usage(): never {
@@ -45,6 +48,14 @@ function usage(): never {
       '                    adjudication is human)',
       '  census            reconcile the Portfolio register against observed',
       '                    repos and local checkouts (M-001/M-002)',
+      '  style [files...]  the mechanically checkable prose rules (P- rules,',
+      '                    W-008 report shape) over the given markdown files',
+      '                    or every one under the repo; an .ir.md file takes',
+      '                    the IR checks instead',
+      '  ir check <file.ir.md>...',
+      '                    the IR schema checks CK-01..CK-11 (communication',
+      '                    pipeline docs/ir-schema.md) plus the unratified-',
+      '                    term count',
       '',
       'common options:',
       '  --repo <path>     project to operate on (default: cwd)',
@@ -59,12 +70,14 @@ function usage(): never {
       '                  --write  (deliver)',
       'census options:   --observed <file: JSON array or owner/name lines>',
       '                  --checkouts <dir of checkouts> (repeatable)',
+      'style/ir options: --vocab <path> (repeatable; default: docs/vocabulary.md',
+      '                  of the repo and of the corpus)',
     ].join('\n'),
   );
   process.exit(2);
 }
 
-function findCorpus(explicit: string | undefined, repo: string): string {
+function locateCorpus(explicit: string | undefined, repo: string): string | null {
   const candidates = [
     explicit,
     process.env['MTOOL_CORPUS'],
@@ -73,6 +86,12 @@ function findCorpus(explicit: string | undefined, repo: string): string {
   for (const c of candidates) {
     if (existsSync(resolve(c, 'docs', 'rules'))) return resolve(c);
   }
+  return null;
+}
+
+function findCorpus(explicit: string | undefined, repo: string): string {
+  const found = locateCorpus(explicit, repo);
+  if (found) return found;
   console.error(
     'mtool: cannot find a methodology corpus checkout (need <corpus>/docs/rules). ' +
       'Pass --corpus or set MTOOL_CORPUS.',
@@ -99,11 +118,37 @@ const { values, positionals } = parseArgs({
     observed: { type: 'string' },
     checkouts: { type: 'string', multiple: true },
     tombstone: { type: 'boolean', default: false },
+    vocab: { type: 'string', multiple: true },
   },
 });
 
 const repo = resolve(values.repo ?? process.cwd());
 const command = positionals[0];
+
+/** Vocabulary files for `style` and `ir check`: --vocab, else the
+ *  repo's and the corpus's docs/vocabulary.md (whichever exist). */
+function vocabularyFiles(): string[] {
+  if (values.vocab && values.vocab.length > 0) return values.vocab.map((v) => resolve(v));
+  const corpus = locateCorpus(values.corpus, repo);
+  return [join(repo, 'docs', 'vocabulary.md'), ...(corpus ? [join(corpus, 'docs', 'vocabulary.md')] : [])];
+}
+
+/** `file:line: SEVERITY rule message` lines plus the one-line summary;
+ *  paths print repo-relative when the file is under the repo. */
+function renderFindingLines(findings: AuditFinding[], fileCount: number): { text: string; violations: number } {
+  const lines: string[] = [];
+  let violations = 0;
+  let warnings = 0;
+  for (const f of findings) {
+    if (f.severity === 'violation') violations++;
+    else if (f.severity === 'warning') warnings++;
+    const abs = f.file ?? '';
+    const shown = abs.startsWith(repo + '/') ? relative(repo, abs) : abs;
+    lines.push(`${shown}:${f.line ?? 0}: ${f.severity.toUpperCase().padEnd(9)} ${f.rule} ${f.message}`);
+  }
+  lines.push(`${fileCount} file(s); ${violations} violation(s), ${warnings} warning(s)`);
+  return { text: lines.join('\n'), violations };
+}
 
 async function ask(question: string, allowed?: readonly string[]): Promise<string> {
   if (!process.stdin.isTTY) {
@@ -168,6 +213,41 @@ if (command === 'status') {
   if (values.json) console.log(JSON.stringify(report, null, 2));
   else console.log(renderCensus(report));
   process.exit(report.findings.some((f) => f.severity === 'violation') ? 1 : 0);
+} else if (command === 'style') {
+  // The P- rules' mechanical part and W-008's report shape (style.ts).
+  const vocab = loadVocabulary(vocabularyFiles());
+  const files =
+    positionals.length > 1
+      ? positionals.slice(1).map((p) => resolve(p))
+      : [...markdownFiles(repo, ['.git', 'node_modules'])].map((rel) => join(repo, rel));
+  const findings: AuditFinding[] = [];
+  for (const file of files) {
+    if (file.endsWith('.ir.md')) findings.push(...lintIR(readFileSync(file, 'utf8'), { vocab, file }).findings);
+    else findings.push(...lintProse(file, { vocab }));
+  }
+  if (values.json) console.log(JSON.stringify(findings, null, 2));
+  else console.log(renderFindingLines(findings, files.length).text);
+  // Prose findings are SHOULD-level warnings; only a W-008 MUST (or an
+  // IR schema violation) is a violation and blocks.
+  process.exit(findings.some((f) => f.severity === 'violation') ? 1 : 0);
+} else if (command === 'ir' && positionals[1] === 'check') {
+  // The IR schema's mechanical checks CK-01..CK-11 (ir.ts).
+  const files = positionals.slice(2).map((p) => resolve(p));
+  if (files.length === 0) usage();
+  const vocab = loadVocabulary(vocabularyFiles());
+  const findings: AuditFinding[] = [];
+  let unratified = 0;
+  for (const file of files) {
+    const r = lintIR(readFileSync(file, 'utf8'), { vocab, file });
+    findings.push(...r.findings);
+    unratified += r.unratifiedTerms;
+  }
+  if (values.json) console.log(JSON.stringify({ findings, unratifiedTerms: unratified }, null, 2));
+  else {
+    console.log(renderFindingLines(findings, files.length).text);
+    console.log(`unratified terms: ${unratified}`);
+  }
+  process.exit(findings.some((f) => f.severity === 'violation') ? 1 : 0);
 } else if (command === 'hooks' && positionals[1] === 'install') {
   const corpus = findCorpus(values.corpus, repo);
   const { hookPath } = installHooks(repo, corpus);
