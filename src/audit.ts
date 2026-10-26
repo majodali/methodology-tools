@@ -378,6 +378,16 @@ export function w008Block(text: string): string | null {
 /** The rule's own copy: the block inside the fenced ```markdown of
  *  W-008 in `<corpus>/docs/rules/working-agreement.md` (null when the
  *  corpus has no such block, e.g. a pre-1.5.0 corpus). */
+/** True when the corpus's Release register holds content under Unreleased. */
+export function corpusHasUnreleasedContent(corpus: string): boolean {
+  const path = join(corpus, 'docs', 'releases.md');
+  if (!existsSync(path)) return false;
+  const m = /^## Unreleased\n([\s\S]*?)(?=^## |\Z)/m.exec(readFileSync(path, 'utf8'));
+  if (!m) return false;
+  const body = m[1]!.trim();
+  return body.length > 0 && !/^\(empty/.test(body);
+}
+
 export function corpusW008Block(corpus: string): string | null {
   const path = join(corpus, 'docs', 'rules', 'working-agreement.md');
   if (!existsSync(path)) return null;
@@ -406,10 +416,16 @@ function checkBootstrapCache(
     return;
   }
   if (actual !== expected) {
+    // A corpus checkout with unreleased amendments may prescribe a block
+    // the pinned release does not yet; then the difference is version
+    // lag in waiting, reported as info, not drift.
+    const unreleased = corpusHasUnreleasedContent(corpus);
     findings.push({
       rule: 'W-008',
-      severity: 'warning',
-      message: "Agent bootstrap's W-008 block differs from the rule's block (drift)",
+      severity: unreleased ? 'info' : 'warning',
+      message: unreleased
+        ? "Agent bootstrap's W-008 block differs from the corpus's block; the corpus has unreleased amendments, so compare again after the next release"
+        : "Agent bootstrap's W-008 block differs from the rule's block (drift)",
       file: 'CLAUDE.md',
     });
   }

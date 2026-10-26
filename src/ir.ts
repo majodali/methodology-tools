@@ -174,8 +174,11 @@ export function lintIR(text: string, opts: IRLintOptions = {}): IRLintResult {
   const file = opts.file;
   const ir = parseIR(text);
   const findings: AuditFinding[] = [];
+  // CK-03 and CK-04 are heuristics (a coordinating clause, a bolded
+  // phrase), so they report as warnings; the other checks are exact.
+  const HEURISTIC = new Set(['CK-03', 'CK-04']);
   const add = (rule: string, line: number, message: string) => {
-    findings.push({ rule, severity: 'violation', message, ...(file ? { file } : {}), line });
+    findings.push({ rule, severity: HEURISTIC.has(rule) ? 'warning' : 'violation', message, ...(file ? { file } : {}), line });
   };
 
   // CK-07: the Reader header is a catalog identifier; Purpose starts with report or document.
