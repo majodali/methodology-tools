@@ -46,6 +46,8 @@ export interface IRDoc {
   header: Record<string, string>;
   sections: IRSection[];
   elements: IRElement[];
+  /** CK-16: lines inside a section that are neither element, heading, continuation, comment, empty-parts nor resolution line. */
+  stray: { line: number; text: string }[];
 }
 
 const ELEMENT_RE = /^([TCGREA])(\d+)\.\s+(.*)$/;
@@ -55,7 +57,7 @@ const HEADER_RE = /^(Reader|Purpose|Status|Source|Normative|Footprint):\s*(.*)$/
 
 export function parseIR(text: string): IRDoc {
   const lines = text.split(/\r?\n/);
-  const ir: IRDoc = { header: {}, sections: [], elements: [] };
+  const ir: IRDoc = { header: {}, sections: [], elements: [], stray: [] };
   const firstH2 = lines.findIndex((l) => H2_RE.test(l));
   const headLines = firstH2 === -1 ? lines : lines.slice(0, firstH2);
   for (const l of headLines) {
@@ -94,6 +96,11 @@ export function parseIR(text: string): IRDoc {
     if (current) {
       if (raw.trim() === '' || /^#/.test(raw)) flush();
       else current.body += ' ' + raw.trim();
+      return;
+    }
+    const t = raw.trim();
+    if (section && t !== '' && !/^#/.test(t) && !/^<!--/.test(t) && !/^Empty parts:/.test(t) && !/^A\d+ resolved:/.test(t)) {
+      ir.stray.push({ line: i + 1, text: t.slice(0, 80) });
     }
   });
   flush();
@@ -222,6 +229,13 @@ export function lintIR(text: string, opts: IRLintOptions = {}): IRLintResult {
     else if (!/verdict/i.test(readFileSync(record, 'utf8'))) add('CK-14', 1, `${basename(record)} holds no verdict`);
 
   }
+
+
+  // CK-16: element form (specification, Mechanical checks).
+
+
+  for (const st of ir.stray) add('CK-16', st.line, `line is not an element, heading or continuation: "${st.text}"`);
+
 
 
   // CK-12: identifiers are unique within the document (specification,
