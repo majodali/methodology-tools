@@ -1021,6 +1021,17 @@ test('ir check: CK-12 flags a duplicated identifier; a Footprint header parses',
   assert.ok(lintIR(ir, { vocab: new Map() }).findings.some((f) => f.rule === 'CK-12'));
 });
 
+test('vocabulary: a term beginning with "Term" is not mistaken for the header row', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-vocab-'));
+  try {
+    const f = join(tmp, 'vocabulary.md');
+    writeFileSync(f, '| Term | Meaning | Status | Site |\n|---|---|---|---|\n| <a id="def-term-lifecycle"></a>Term lifecycle | a path | decided, owner | here |\n');
+    assert.equal(vocabularyEntries(f).get('term lifecycle')?.status, 'decided');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 console.log(`\n${passed} tests passed`);
 
 // Explicit HTML anchors resolve as link targets (communication-pipeline's
