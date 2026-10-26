@@ -1014,6 +1014,13 @@ if (realCorpus && existsSync(resolve(realCorpus, 'docs', 'rules'))) {
   console.log('skip real-corpus tests (set MTOOL_CORPUS to a methodology checkout)');
 }
 
+test('ir check: CK-12 flags a duplicated identifier; a Footprint header parses', () => {
+  const ir = 'Reader: RD-1\nPurpose: report. x\nStatus: draft\nSource: s\nFootprint: docs/a.md; docs/records/\n\n## Terms\n\n## Claims\n\nC1. One. [proposed: this IR]\n\nC1. Two. [proposed: this IR]\n\n## Relations\n\n## Evidence\n\n## Asks\n\nA0. No asks.\n';
+  const parsed = parseIR(ir);
+  assert.equal(parsed.header['footprint'], 'docs/a.md; docs/records/');
+  assert.ok(lintIR(ir, { vocab: new Map() }).findings.some((f) => f.rule === 'CK-12'));
+});
+
 console.log(`\n${passed} tests passed`);
 
 // Explicit HTML anchors resolve as link targets (communication-pipeline's
@@ -1029,10 +1036,3 @@ console.log(`\n${passed} tests passed`);
   assert.deepEqual(problems, ['missing-anchor:vocabulary.md#def-gadget'], 'explicit id anchors resolve; a missing one is still reported');
   console.log('ok   links: explicit <a id> anchors resolve as link targets');
 }
-
-test('ir check: CK-12 flags a duplicated identifier; a Footprint header parses', () => {
-  const ir = 'Reader: RD-1\nPurpose: report. x\nStatus: draft\nSource: s\nFootprint: docs/a.md; docs/records/\n\n## Terms\n\n## Claims\n\nC1. One. [proposed: this IR]\n\nC1. Two. [proposed: this IR]\n\n## Relations\n\n## Evidence\n\n## Asks\n\nA0. No asks.\n';
-  const parsed = parseIR(ir);
-  assert.equal(parsed.header['footprint'], 'docs/a.md; docs/records/');
-  assert.ok(lintIR(ir, { vocab: new Map() }).findings.some((f) => f.rule === 'CK-12'));
-});
