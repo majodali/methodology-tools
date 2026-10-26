@@ -9,7 +9,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { constraints, inPlay, moreSpecific } from './applicability.js';
-import { buildAudit, fingerprint } from './audit.js';
+import { buildAudit, corpusW008Block, fingerprint, w008Block } from './audit.js';
+import { lintIR, parseIR } from './ir.js';
+import { lintProseText, vocabularyEntries } from './style.js';
 import { reconcile } from './census.js';
 import { classify } from './classify.js';
 import { buildDelivery, parseBaseline } from './deliver.js';
@@ -647,6 +649,311 @@ test('plugin: SessionStart command injects the brief status', () => {
     });
     assert.ok(out.includes('compliance target 1.2.0'));
     assert.ok(out.trim().split('\n').length <= 4);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ---------- IR parser and checks (communication-pipeline docs/ir-schema.md) ----------
+// Ported from the pipeline's scripts/test.mjs; the regression cases are
+// its recorded false positives.
+
+const GOOD_IR = `# IR: x
+
+Reader: RD-1 (human owner, in conversation).
+Purpose: report. A test.
+Status: draft
+Source: test
+
+## Terms
+
+T1. Widget: a thing. [proposed: this IR]
+
+## Claims
+
+C1. The widget exists. evidence: E1. [decided: owner, 2026-10-25]
+C2. The widget is blue. [inferred: R1]
+
+## Relations
+
+R1. C2 depends-on C1 because a thing must exist to have a colour.
+
+## Evidence
+
+E1. tests/fixture.md, line 1.
+
+## Asks
+
+A1. Approve the widget. Depends: C1.
+`;
+const irRules = (text: string) => lintIR(text).findings.map((f) => f.rule);
+
+test('ir: a conforming IR parses and has no findings', () => {
+  const ir = parseIR(GOOD_IR);
+  assert.equal(ir.header['reader'], 'RD-1 (human owner, in conversation).');
+  assert.deepEqual(ir.sections.map((s) => s.title), ['Terms', 'Claims', 'Relations', 'Evidence', 'Asks']);
+  assert.deepEqual(ir.elements.map((e) => e.id), ['T1', 'C1', 'C2', 'R1', 'E1', 'A1']);
+  const c1 = ir.elements[1]!;
+  assert.deepEqual(c1.provenance, { status: 'decided', detail: 'owner, 2026-10-25' });
+  assert.equal(c1.text, 'The widget exists. evidence: E1.');
+  assert.equal(c1.line, 14);
+  assert.equal(c1.section, 'Claims');
+  const r = lintIR(GOOD_IR);
+  assert.deepEqual(r.findings, []);
+  assert.equal(r.unratifiedTerms, 1, 'T1 is proposed and no vocabulary row is decided');
+});
+
+test('ir: continuation lines join the element; CK findings are violations with a line and file', () => {
+  const t = GOOD_IR.replace('C2. The widget is blue.', 'C2. It is blue,\n   like the other one.');
+  const r = lintIR(t, { file: '/x/a.ir.md' });
+  assert.equal(r.ir.elements[2]!.text, 'It is blue, like the other one.');
+  const ck01 = r.findings.filter((f) => f.rule === 'CK-01');
+  assert.equal(ck01.length, 2);
+  for (const f of ck01) {
+    assert.equal(f.severity, 'violation');
+    assert.equal(f.line, 15);
+    assert.equal(f.file, '/x/a.ir.md');
+  }
+});
+
+test('ir: CK-01 passes a sentence-initial determiner that names its noun', () => {
+  const t = GOOD_IR.replace('C2. The widget is blue.', 'C2. This widget is blue.');
+  assert.deepEqual(irRules(t).filter((r) => r === 'CK-01'), []);
+});
+
+test('ir: CK-02 flags a claim over 40 words', () => {
+  const long = 'C2. ' + Array(42).fill('word').join(' ') + '. [inferred: R1]';
+  const t = GOOD_IR.replace(/C2\. .*$/m, long);
+  assert.ok(irRules(t).includes('CK-02'));
+});
+
+test('ir: CK-03 — a semicolon list after a colon, or a closing ", and", is not a clause join', () => {
+  const list = GOOD_IR.replace('C2. The widget is blue.', 'C2. The widget has three parts: a base; a stem; a cap.');
+  assert.deepEqual(irRules(list).filter((r) => r === 'CK-03'), []);
+  const and = GOOD_IR.replace(
+    'C2. The widget is blue.',
+    'C2. The widget has three parts that matter to every reader who ever meets it in practice: a base, a stem, and a cap that fits.',
+  );
+  assert.deepEqual(irRules(and).filter((r) => r === 'CK-03'), []);
+  const join = GOOD_IR.replace('C2. The widget is blue.', 'C2. The widget is blue; the base is red.');
+  assert.ok(irRules(join).includes('CK-03'));
+});
+
+test('ir: CK-04 — a bolded term is a T element or a vocabulary term', () => {
+  const t = GOOD_IR.replace('C2. The widget is blue.', 'C2. The **widget** has a **gadget**.');
+  const vocab = new Map([['gadget', { term: 'Gadget', anchor: 'def-gadget', status: 'decided' as const }]]);
+  assert.equal(lintIR(t).findings.filter((f) => f.rule === 'CK-04').length, 1);
+  assert.deepEqual(lintIR(t, { vocab }).findings.filter((f) => f.rule === 'CK-04'), []);
+});
+
+test('ir: CK-05 requires provenance on T, C, G and the right fields', () => {
+  const t = GOOD_IR.replace(' [inferred: R1]', ' [inferred]').replace(' [decided: owner, 2026-10-25]', '');
+  assert.equal(irRules(t).filter((r) => r === 'CK-05').length, 2);
+});
+
+test('ir: CK-06 flags unresolved identifiers in relations, evidence and asks', () => {
+  const t = GOOD_IR.replace('evidence: E1', 'evidence: E9').replace('Depends: C1', 'Depends: C7').replace('C2 depends-on C1', 'C2 depends-on C5');
+  assert.equal(irRules(t).filter((r) => r === 'CK-06').length, 3);
+});
+
+test('ir: CK-07 and CK-08 check the header and the asks section', () => {
+  const t = GOOD_IR.replace('Reader: RD-1 (human owner, in conversation).', 'Reader: the owner')
+    .replace('Purpose: report. A test.', 'Purpose: a test.')
+    .replace(/## Asks[\s\S]*$/, '');
+  const rules = irRules(t);
+  assert.equal(rules.filter((r) => r === 'CK-07').length, 2);
+  assert.ok(!rules.includes('CK-08'), 'an unparseable Reader is not an RD-1/RD-2 IR');
+  const noAsks = GOOD_IR.replace(/## Asks[\s\S]*$/, '');
+  assert.ok(irRules(noAsks).includes('CK-08'));
+});
+
+test('ir: CK-09 flags a claim in two clusters; CK-10 flags section order', () => {
+  const t = GOOD_IR.replace('## Relations', 'G1. cluster: C1, C2 [proposed: this IR]\nG2. cluster: C2 [proposed: this IR]\n\n## Relations');
+  assert.ok(irRules(t).includes('CK-09'));
+  const u = GOOD_IR.replace('## Terms', '## Zebra').replace('## Claims', '## Terms');
+  assert.ok(irRules(u).includes('CK-10'));
+});
+
+test('ir: CK-11 — a defined-at target resolves', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-ir-defined-at-'));
+  try {
+    writeFileSync(join(tmp, 'vocabulary.md'), '| Term | Meaning |\n|---|---|\n| <a id="def-widget"></a>Widget | a thing |\n');
+    const path = join(tmp, 'a.ir.md');
+    const ok = GOOD_IR.replace('T1. Widget: a thing.', 'T1. Widget: a thing. defined-at: vocabulary.md#def-widget');
+    assert.deepEqual(lintIR(ok, { file: path }).findings, []);
+    const bad = GOOD_IR.replace('T1. Widget: a thing.', 'T1. Widget: a thing. defined-at: vocabulary.md#def-gadget');
+    assert.equal(lintIR(bad, { file: path }).findings.filter((f) => f.rule === 'CK-11').length, 1);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ---------- prose lints (the P- rules' mechanical part; style-spec rows) ----------
+
+const checks = (text: string, opts = {}) => lintProseText(text, opts).map((f) => f.check);
+const only = (text: string, check: string, opts = {}) => lintProseText(text, opts).filter((f) => f.check === check);
+
+test('style: the case 001 patterns, each cited to its methodology rule', () => {
+  const prose = `# Review
+
+## Asks
+
+Do the thing.
+
+## What changed
+
+That is the monolith. P-004 and P-006 exist and hold in 10 of 50 documents across 3 projects. **The three documents are one argument at three levels, and your framework should adjudicate the other two.** This is fine. The mapping says where the corpus is weakest — provenance of concepts; most of the package lands there.
+
+## What is already covered
+
+Nothing.
+`;
+  const findings = lintProseText(prose);
+  const seen = findings.map((f) => f.check);
+  for (const c of ['SP-08', 'SP-05', 'SP-20', 'SP-07', 'SP-03', 'SP-09', 'SP-13']) assert.ok(seen.includes(c), `expected ${c} in ${seen}`);
+  const ruleOf = (c: string) => findings.find((f) => f.check === c)!;
+  assert.equal(ruleOf('SP-13').rule, 'W-008');
+  assert.equal(ruleOf('SP-13').severity, 'violation');
+  assert.equal(ruleOf('SP-05').rule, 'P-004');
+  assert.equal(ruleOf('SP-07').rule, 'P-003');
+  assert.equal(ruleOf('SP-20').rule, 'P-001');
+  assert.equal(ruleOf('SP-03').rule, 'P-002');
+  assert.match(ruleOf('SP-03').message, /referent/);
+  for (const f of findings) if (f.check !== 'SP-13') assert.equal(f.severity, 'warning', `${f.check} is a warning`);
+});
+
+test('style: named identifiers and links satisfy P-004 (SP-05)', () => {
+  assert.deepEqual(only('W-006 (branches are single-use) binds. See [P-004](x.md). W-006 again is fine.\n', 'SP-05'), []);
+});
+
+test('style: a semicolon list after a colon is not a clause join (SP-09)', () => {
+  assert.deepEqual(only('Three parts: asks; what is covered; what changed.\n', 'SP-09'), []);
+  assert.equal(only('The lint runs; the reviewer reads.\n', 'SP-09').length, 1);
+});
+
+test('style: a sentence-initial determiner with its noun is not a bare pronoun (SP-03)', () => {
+  assert.deepEqual(only('This specification restates the rules.\n', 'SP-03'), []);
+  assert.equal(only('This is fine.\n', 'SP-03').length, 1);
+});
+
+test('style: a table row defines the identifier in its first cell (SP-05)', () => {
+  const prose = '| Id | Rule |\n|---|---|\n| SP-01 | one claim per sentence |\n\nSP-01 binds everyone.\n';
+  assert.deepEqual(only(prose, 'SP-05'), []);
+  const bare = '| Id | Rule |\n|---|---|\n| SP-01 | see SP-02 |\n';
+  assert.equal(only(bare, 'SP-05').length, 1);
+});
+
+test('style: SP-13 ignores headings inside fenced code', () => {
+  assert.deepEqual(only('Intro.\n\n```markdown\n## Asks\n\n## What changed\n```\n', 'SP-13'), []);
+});
+
+test('style: SP-13 applies to reports, not to a plan with an Asks section', () => {
+  assert.deepEqual(only('# Plan\n\n## Chunks\n\nx.\n\n## Asks\n\nNone.\n', 'SP-13'), []);
+});
+
+test('style: SP-20 does not count identifiers, versions or dates as numerals', () => {
+  assert.deepEqual(only('Checks CK-01 to CK-10 shipped in v1.5.0 on 2026-10-25 under RD-4.\n', 'SP-20'), []);
+  assert.equal(only('There were 43 violations, 130 warnings and 15 files.\n', 'SP-20').length, 1);
+});
+
+test('style: a fielded row may open with a bold label and carry one em-dash (SP-07, SP-09)', () => {
+  const row = checks('- [x] **Chunk 2 — roles in Claude Code** — 2026-10-25. Three skills landed.\n');
+  assert.ok(!row.includes('SP-07') && !row.includes('SP-09'), row.join());
+  assert.equal(only('The lint runs — the reviewer reads — the owner decides.\n', 'SP-09').length, 1);
+});
+
+test('style: a pointer list item is a row: path — description', () => {
+  assert.deepEqual(only('- docs/classification.md — the binding declaration\n', 'SP-09'), []);
+});
+
+test('style: list items are separate blocks, not one long sentence (SP-02)', () => {
+  const list =
+    '1. **Asks** — the decisions requested of the reader.\n2. **What changed** — the parts that are new, each with a pointer into the deliverable and what to review there.\n3. **What is covered** — the parts that encode decisions the conversation already settled before this report.\n';
+  assert.deepEqual(only(list, 'SP-02'), []);
+});
+
+test('style: SP-23 wants a vocabulary term linked at first use; code spans are not uses', () => {
+  const vocab = new Map([['paraphraser', { term: 'Paraphraser', anchor: 'def-paraphraser', status: 'decided' as const }]]);
+  const bare = only('The paraphraser renders prose. The paraphraser is fast.\n', 'SP-23', { vocab });
+  assert.equal(bare.length, 1);
+  assert.equal(bare[0]!.rule, 'P-008');
+  assert.deepEqual(only('The [paraphraser](docs/vocabulary.md#def-paraphraser) renders prose. The paraphraser is fast.\n', 'SP-23', { vocab }), []);
+  assert.deepEqual(only('Run `paraphraser` now.\n', 'SP-23', { vocab }), []);
+});
+
+test('style: vocabulary entries read the table rows and the methodology list form; SP-24 checks #def- links', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-vocab-'));
+  try {
+    const table = join(tmp, 'table.md');
+    writeFileSync(
+      table,
+      '| Term | Meaning | Status | Definition site |\n|---|---|---|---|\n' +
+        '| <a id="def-intermediate-representation"></a>Intermediate representation (IR) | the structured form | decided, owner 2026-10-24 | [ir-schema.md](ir-schema.md) |\n' +
+        '| <a id="def-render-map"></a>Render map | a comment line | proposed, chunk 2 IR | |\n',
+    );
+    const t = vocabularyEntries(table);
+    assert.deepEqual(t.get('ir'), { term: 'IR', anchor: 'def-intermediate-representation', status: 'decided' });
+    assert.equal(t.get('intermediate representation')?.status, 'decided');
+    assert.equal(t.get('render map')?.status, 'proposed');
+
+    const list = join(tmp, 'list.md');
+    writeFileSync(
+      list,
+      '# Vocabulary\n\n- <a id="def-c-tier"></a>**C-tier** — criticality.\n' +
+        '- <a id="def-derived-conditions"></a>**Derived conditions** (functions of declared fields) — see below.\n' +
+        '  - <a id="def-proportional-verification"></a>**Proportional\n    verification** — review cost follows the change.\n' +
+        '- **Unanchored** — a term with no definition site.\n',
+    );
+    const l = vocabularyEntries(list);
+    assert.deepEqual(l.get('c-tier'), { term: 'C-tier', anchor: 'def-c-tier', status: 'decided' });
+    assert.equal(l.get('derived conditions')?.anchor, 'def-derived-conditions');
+    assert.equal(l.get('proportional verification')?.anchor, 'def-proportional-verification');
+    assert.deepEqual(l.get('unanchored'), { term: 'Unanchored', anchor: null, status: 'decided' });
+    // Later files add to earlier ones.
+    assert.equal(vocabularyEntries(list, t).size, t.size);
+
+    const doc = join(tmp, 'doc.md');
+    const f = lintProseText('A [render map](table.md#def-render-map) and a [gadget](table.md#def-gadget).\n', { file: doc });
+    const sp24 = f.filter((x) => x.check === 'SP-24');
+    assert.equal(sp24.length, 1);
+    assert.match(sp24[0]!.message, /def-gadget/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ---------- W-008 bootstrap cache drift ----------
+
+test('audit form: W-008 bootstrap cache — identical passes, one changed character is drift, absence warns at C1+', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mtool-w008-'));
+  const corpus = join(tmp, 'corpus');
+  const repo = join(tmp, 'repo');
+  try {
+    const block =
+      '## Reporting and writing — cached from W-008; do not edit here\n\nReports carry four parts.\n\nAuthority: W-008. This block is a\ncache — amend it upstream, never here.';
+    mkdirSync(join(corpus, 'docs', 'rules'), { recursive: true });
+    writeFileSync(
+      join(corpus, 'docs', 'rules', 'working-agreement.md'),
+      `# W — Working agreement\n\n### W-008 — Reports map their deliverables\nApplies: [C0+]\nKeywords: MUST\n\n**Required bootstrap text**: the block below, verbatim.\n\n\`\`\`markdown\n${block}\n\`\`\`\n\n**Rationale**: conformance decays with distance.\n\n### W-009 — Another rule\nApplies: [C1+]\nKeywords: MUST\n`,
+    );
+    assert.equal(corpusW008Block(corpus), block);
+    assert.equal(corpusW008Block(CORPUS), null, 'the fixture corpus prescribes no block');
+
+    classify(repo, CORPUS, { ctier: 1, slevel: 0, type: 'web-app', target: 'none/local', pin: '1.1.0', description: 'W-008 test.' });
+    const w008 = () => buildAudit(repo, corpus, { mode: 'full' }).findings.filter((f) => f.rule === 'W-008');
+    const bootstrap = join(repo, 'CLAUDE.md');
+    assert.equal(w008Block(readFileSync(bootstrap, 'utf8')), null);
+    assert.deepEqual(w008().map((f) => [f.severity, f.message]), [['warning', 'Agent bootstrap lacks the W-008 block']]);
+
+    const original = readFileSync(bootstrap, 'utf8');
+    writeFileSync(bootstrap, `${original}\n${block}\n`);
+    assert.deepEqual(w008(), []);
+
+    writeFileSync(bootstrap, `${original}\n${block.replace('four parts', 'four part')}\n`);
+    assert.deepEqual(w008().map((f) => [f.severity, f.message]), [['warning', "Agent bootstrap's W-008 block differs from the rule's block (drift)"]]);
+
+    // A fixture corpus with no prescribed block compares nothing.
+    assert.deepEqual(buildAudit(repo, CORPUS, { mode: 'full' }).findings.filter((f) => f.rule === 'W-008'), []);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

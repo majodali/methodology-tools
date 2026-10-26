@@ -197,6 +197,19 @@ since the owner's build green-light, 2026-08-19).
   migration-note `none`. The v1.5.0 content lands here as queued
   work: the bootstrap-cache drift check, below.
 
+- [x] **Style and IR checks, W-008 block drift** — `mtool style`
+  (`src/style.ts`) runs the P- rules' mechanical part and W-008's
+  report shape, ported from the communication pipeline's
+  `scripts/lint.mjs` with every finding citing its methodology rule;
+  `mtool ir check` (`src/ir.ts`) runs the IR schema's CK-01..CK-11 and
+  counts unratified terms; vocabulary lookup reads the pipeline's
+  table rows and the methodology's list entries (`src/vocabulary.ts`);
+  `mtool audit form` compares the bootstrap's W-008 block with the
+  rule's fenced block and reports drift or absence as a W-008 warning
+  (skipped when the corpus prescribes no block). Parity with the
+  pipeline lint on its own tree: identical findings per file and line
+  (27 files, 98 warnings, 0 violations; 3 IRs clean). 65 tests pass.
+
 - [ ] **Custom-type checker extension point** (inbound proposal,
   awaiting adjudication) —
   [proposals/custom-type-checker-extension.md](proposals/custom-type-checker-extension.md):
@@ -225,7 +238,8 @@ since the owner's build green-light, 2026-08-19).
   designations, and clear the standing tool-unreadable info finding
   for conforming declarations (non-conforming declarations keep it).
 
-- [ ] **W-008 bootstrap-cache drift check** — `mtool audit form`
+- [x] **W-008 bootstrap-cache drift check** (shipped; see the Completed
+  entry *Style and IR checks, W-008 block drift*) — `mtool audit form`
   compares a project's `CLAUDE.md` copy of W-008's prescribed
   reporting block against the fenced block in the rule's **Required
   bootstrap text** field, and reports any difference as drift. W-008

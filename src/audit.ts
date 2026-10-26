@@ -171,6 +171,15 @@ export function buildAudit(
       });
   }
 
+  // ---- W-008 bootstrap cache: the prescribed reporting block ----
+  // W-008 (Required bootstrap text): a project with an Agent bootstrap
+  // carries the rule's block verbatim; audits compare the copy against
+  // the rule and report any difference as drift. An implicit-C0
+  // project owes nothing here.
+  if (playing.has('W-008') && !classification.implicit && inScope('CLAUDE.md') && existsSync(join(repo, 'CLAUDE.md'))) {
+    checkBootstrapCache(repo, corpus, classification, findings);
+  }
+
   if (haveDecisions && playing.has('K-004') && inScope('docs/decisions.md') && existsSync(join(repo, 'docs', 'decisions.md'))) {
     const doc = parseDoc(join(repo, 'docs', 'decisions.md'));
     doc.lines.forEach((raw, i) => {
@@ -345,6 +354,64 @@ function checkBindingConsistency(
         file: 'CLAUDE.md',
       });
     }
+  }
+}
+
+const W008_HEADING = '## Reporting and writing — cached from W-008; do not edit here';
+
+/** The W-008 block of `text`: from its heading line through the line
+ *  ending `never here.` (inclusive), or null when the heading is absent.
+ *  A heading with no terminator yields the heading alone, which then
+ *  reads as drift. */
+export function w008Block(text: string): string | null {
+  const lines = text.split('\n');
+  const start = lines.indexOf(W008_HEADING);
+  if (start === -1) return null;
+  const out: string[] = [];
+  for (let i = start; i < lines.length; i++) {
+    out.push(lines[i]!);
+    if (lines[i]!.endsWith('never here.')) break;
+  }
+  return out.join('\n');
+}
+
+/** The rule's own copy: the block inside the fenced ```markdown of
+ *  W-008 in `<corpus>/docs/rules/working-agreement.md` (null when the
+ *  corpus has no such block, e.g. a pre-1.5.0 corpus). */
+export function corpusW008Block(corpus: string): string | null {
+  const path = join(corpus, 'docs', 'rules', 'working-agreement.md');
+  if (!existsSync(path)) return null;
+  const text = readFileSync(path, 'utf8');
+  const start = text.search(/^### W-008\b/m);
+  if (start === -1) return null;
+  const rest = text.slice(start);
+  const next = rest.slice(1).search(/^### /m);
+  const section = next === -1 ? rest : rest.slice(0, next + 1);
+  const fence = /```markdown\n([\s\S]*?)\n```/.exec(section);
+  return fence ? w008Block(fence[1]!) : null;
+}
+
+function checkBootstrapCache(
+  repo: string,
+  corpus: string,
+  c: Classification,
+  findings: AuditFinding[],
+): void {
+  const expected = corpusW008Block(corpus);
+  if (expected === null) return; // the corpus prescribes no block: nothing to compare
+  const actual = w008Block(readFileSync(join(repo, 'CLAUDE.md'), 'utf8'));
+  if (actual === null) {
+    if (c.ctier >= 1)
+      findings.push({ rule: 'W-008', severity: 'warning', message: 'Agent bootstrap lacks the W-008 block', file: 'CLAUDE.md' });
+    return;
+  }
+  if (actual !== expected) {
+    findings.push({
+      rule: 'W-008',
+      severity: 'warning',
+      message: "Agent bootstrap's W-008 block differs from the rule's block (drift)",
+      file: 'CLAUDE.md',
+    });
   }
 }
 
