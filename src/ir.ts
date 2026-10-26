@@ -212,7 +212,8 @@ export function lintIR(text: string, opts: IRLintOptions = {}): IRLintResult {
 
   // CK-14: a reviewed IR has its review record with a verdict beside it.
 
-  if (file && /\breview/i.test(ir.header['status'] ?? '') && /^(reviewed|rendered|delivered)/.test(ir.header['status'] ?? '')) {
+  const selectedForRounds = /^yes/i.test(ir.header['normative'] ?? '') || /^document/.test(ir.header['purpose'] ?? '') || /\bRD-[45]\b/.test(ir.header['reader'] ?? '') || /\breview/i.test(ir.header['status'] ?? '');
+  if (file && selectedForRounds && /^(reviewed|rendered|delivered)/.test(ir.header['status'] ?? '')) {
 
     const record = file.replace(/\.ir\.md$/, '.review.md');
 
