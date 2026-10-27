@@ -1032,6 +1032,16 @@ test('vocabulary: a term beginning with "Term" is not mistaken for the header ro
   }
 });
 
+test('ir check: CK-13 flags two T elements naming one term', () => {
+  const ir = 'Reader: RD-1\nPurpose: report. x\nStatus: draft\nSource: s\n\n## Terms\n\nT1. Widget: a thing. [proposed: this IR]\n\nT2. Widget: another. [proposed: this IR]\n\n## Claims\n\nC1. One. [proposed: this IR]\n\n## Relations\n\n## Evidence\n\n## Asks\n\nA0. No asks.\n';
+  assert.ok(lintIR(ir, { vocab: new Map() }).findings.some((f) => f.rule === 'CK-13'));
+});
+
+test('ir check: CK-16 flags a stray line inside a section', () => {
+  const ir = 'Reader: RD-1\nPurpose: report. x\nStatus: draft\nSource: s\n\n## Terms\n\n## Claims\n\nC1. One. [proposed: this IR]\n\nA stray sentence.\n\n## Relations\n\n## Evidence\n\n## Asks\n\nA0. No asks.\n';
+  assert.ok(lintIR(ir, { vocab: new Map() }).findings.some((f) => f.rule === 'CK-16'));
+});
+
 console.log(`\n${passed} tests passed`);
 
 // Explicit HTML anchors resolve as link targets (communication-pipeline's

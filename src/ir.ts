@@ -4,6 +4,8 @@
 // scripts/ir.mjs and scripts/lint.mjs. The schema document is the spec;
 // this module is a built artifact of it (Constitution Article 3).
 
+import { existsSync, readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import type { AuditFinding } from './audit.js';
 import { Vocabulary, anchorExists } from './vocabulary.js';
 
@@ -44,6 +46,8 @@ export interface IRDoc {
   header: Record<string, string>;
   sections: IRSection[];
   elements: IRElement[];
+  /** CK-16: lines inside a section that are neither element, heading, continuation, comment, empty-parts nor resolution line. */
+  stray: { line: number; text: string }[];
 }
 
 const ELEMENT_RE = /^([TCGREA])(\d+)\.\s+(.*)$/;
@@ -53,7 +57,7 @@ const HEADER_RE = /^(Reader|Purpose|Status|Source|Normative|Footprint):\s*(.*)$/
 
 export function parseIR(text: string): IRDoc {
   const lines = text.split(/\r?\n/);
-  const ir: IRDoc = { header: {}, sections: [], elements: [] };
+  const ir: IRDoc = { header: {}, sections: [], elements: [], stray: [] };
   const firstH2 = lines.findIndex((l) => H2_RE.test(l));
   const headLines = firstH2 === -1 ? lines : lines.slice(0, firstH2);
   for (const l of headLines) {
@@ -92,6 +96,11 @@ export function parseIR(text: string): IRDoc {
     if (current) {
       if (raw.trim() === '' || /^#/.test(raw)) flush();
       else current.body += ' ' + raw.trim();
+      return;
+    }
+    const t = raw.trim();
+    if (section && t !== '' && !/^#/.test(t) && !/^<!--/.test(t) && !/^Empty parts:/.test(t) && !/^A\d+ resolved:/.test(t)) {
+      ir.stray.push({ line: i + 1, text: t.slice(0, 80) });
     }
   });
   flush();
@@ -187,6 +196,47 @@ export function lintIR(text: string, opts: IRLintOptions = {}): IRLintResult {
   if (!READER_RE.test(reader)) add('CK-07', 1, `Reader header is not a catalog identifier: "${reader}"`);
   if (!/^(report|document)\b/.test(purpose))
     add('CK-07', 1, `Purpose header must start with "report" or "document": "${purpose}"`);
+
+  // CK-13: a term is defined once per IR (specification, Element kinds).
+
+  {
+
+    const seenTerms = new Map<string, string>();
+
+    for (const e of ir.elements.filter((x) => x.kind === 'T')) {
+
+      const name = e.text.split(/[:(]/)[0]!.trim().toLowerCase();
+
+      const prev = seenTerms.get(name);
+
+      if (prev !== undefined) add('CK-13', e.line, `${e.id} names the term "${name}" already defined by ${prev}`);
+
+      else seenTerms.set(name, e.id);
+
+    }
+
+  }
+
+  // CK-14: a reviewed IR has its review record with a verdict beside it.
+
+  const selectedForRounds = /^yes/i.test(ir.header['normative'] ?? '') || /^document/.test(ir.header['purpose'] ?? '') || /\bRD-[45]\b/.test(ir.header['reader'] ?? '') || /\breview/i.test(ir.header['status'] ?? '');
+  if (file && selectedForRounds && /^(reviewed|rendered|delivered)/.test(ir.header['status'] ?? '')) {
+
+    const record = file.replace(/\.ir\.md$/, '.review.md');
+
+    if (!existsSync(record)) add('CK-14', 1, `Status records a review but ${basename(record)} is absent`);
+
+    else if (!/verdict/i.test(readFileSync(record, 'utf8'))) add('CK-14', 1, `${basename(record)} holds no verdict`);
+
+  }
+
+
+  // CK-16: element form (specification, Mechanical checks).
+
+
+  for (const st of ir.stray) add('CK-16', st.line, `line is not an element, heading or continuation: "${st.text}"`);
+
+
 
   // CK-12: identifiers are unique within the document (specification,
 
