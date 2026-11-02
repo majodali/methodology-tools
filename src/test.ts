@@ -872,6 +872,13 @@ test('style: list items are separate blocks, not one long sentence (SP-02)', () 
   assert.deepEqual(only(list, 'SP-02'), []);
 });
 
+test('style: SP-02 warns over 25 words, without --verbose (case 015 change 1)', () => {
+  const s26 = Array(26).fill('word').join(' ') + '.\n';
+  const s25 = Array(25).fill('word').join(' ') + '.\n';
+  assert.equal(only(s26, 'SP-02').length, 1);
+  assert.equal(only(s25, 'SP-02').length, 0);
+});
+
 test('style: SP-23 wants a vocabulary term linked at first use; code spans are not uses', () => {
   const vocab = new Map([['paraphraser', { term: 'Paraphraser', anchor: 'def-paraphraser', status: 'decided' as const }]]);
   const bare = only('The paraphraser renders prose. The paraphraser is fast.\n', 'SP-23', { vocab });

@@ -129,7 +129,7 @@ export function sentences(p: string): string[] {
 
 export interface ProseLintOptions {
   vocab?: Vocabulary;
-  /** Also report sentences over 25 words as info (SP-02's warn band). */
+  /** Kept for callers; SP-02 now warns over 25 words without it. */
   verbose?: boolean;
   /** The document's path on disk; enables SP-24 and the vocabulary-file exemption. */
   file?: string;
@@ -140,7 +140,6 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** Lint one document's text. */
 export function lintProseText(text: string, opts: ProseLintOptions = {}): StyleFinding[] {
   const vocab = opts.vocab ?? new Map();
-  const verbose = opts.verbose ?? false;
   const file = opts.file;
   const f: StyleFinding[] = [];
   const add = (check: string, severity: Severity, line: number, msg: string) => {
@@ -236,9 +235,9 @@ export function lintProseText(text: string, opts: ProseLintOptions = {}): StyleF
     const row = b.kind === 'row';
     for (const s of sentences(b.text)) {
       const w = wordCount(s);
-      // SP-02 (P-002): a sentence is at most about 25 words.
-      if (w > 35) add('SP-02', 'warning', b.line, `${w}-word sentence: "${s.slice(0, 60)}…"`);
-      else if (w > 25 && verbose) add('SP-02', 'info', b.line, `${w}-word sentence`);
+      // SP-02 (P-002): a sentence is at most about 25 words. One threshold,
+      // warn over 25 (communication-pipeline evaluation case 015 change 1).
+      if (w > 25) add('SP-02', 'warning', b.line, `${w}-word sentence: "${s.slice(0, 60)}…"`);
       // SP-03 (P-002, the referent rule): every referent is named.
       if (PRONOUN_THEN_VERB.test(s)) add('SP-03', 'warning', b.line, `sentence opens with a pronoun; name the referent: "${s.slice(0, 50)}…"`);
       const d = DEICTIC.exec(s);
