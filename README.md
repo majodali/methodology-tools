@@ -45,7 +45,10 @@ specification row (`SP-nn`) at the end of its message. Output is one
 `N file(s); V violation(s), W warning(s)`. Prose findings are warnings
 (the P- rules are SHOULD-level in their mechanical part); a report that
 lacks or misorders W-008's headings is a violation and the only cause
-of exit 1. Vocabulary terms (for the first-use link check) come from
+of exit 1. A sentence over 25 words is a warning under P-002 (SP-02),
+as the style guide's Mechanical checks table states; the band of 26 to
+35 words no longer needs `--verbose` (communication-pipeline evaluation
+case 015 change 1). Vocabulary terms (for the first-use link check) come from
 `--vocab` files, else from `docs/vocabulary.md` of the repo and of the
 corpus; both the pipeline's table rows and the methodology's list
 entries are read. An `.ir.md` file takes the IR checks instead.
