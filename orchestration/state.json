@@ -1,0 +1,365 @@
+{
+  "schema": 0,
+  "project": "majodali/methodology-tools",
+  "nodes": [
+    {
+      "id": "P1-N001",
+      "kind": "work",
+      "title": "Repository bootstrap",
+      "outcome": "repo governed under majodali/methodology v1.0.0: founding plan imported as plans/methodology-tools-v1.md (status: draft), Classification declared (component/library, C1, S0, package registry, pinned 1.0.0), Binding block in CLAUDE.md, README stating the Article 3 relationship (documents are the spec; the tool has the bug).",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": "docs/plans/methodology-tools-v1.md",
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N002",
+      "kind": "work",
+      "title": "Migrated to methodology 1.1.0",
+      "outcome": "pin and Binding block bumped (v1.1.0 migration notes: none for either amendment, so the pin bump is the whole migration — release process step 5).",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N003",
+      "kind": "work",
+      "title": "Chunk 1 — markdown model, applicability engine, `status`",
+      "outcome": "Chunk 1 shipped: a markdown model, Classification parsing with omission defaults, rule-corpus parsing of applicability tags, the Article 4 applicability engine, and `mtool status` reporting in-play rules, deviations, version lag, sandbox ages and delta-ratio.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N004",
+      "kind": "work",
+      "title": "Chunk 1 completion: delta-ratio wired to the Audit log",
+      "outcome": "Chunk 1 completion: `mtool status` reads the project's Audit log, computing the change ratio since the newest semantic-audit entry, or reporting honestly when no semantic audit or Audit log exists.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N005",
+      "kind": "work",
+      "title": "Chunk 2 — `classify` and `links check`",
+      "outcome": "Chunk 2 shipped: `mtool links check` for deterministic link integrity across a repo, and `mtool classify`, which writes a project's Classification, Binding block and governance docs from the corpus's skeletons in one run, never overwriting existing files.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N006",
+      "kind": "work",
+      "title": "Migrated to methodology 1.2.0",
+      "outcome": "pin and Binding block bumped (v1.2.0 migration notes: none — release process step 5).",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N007",
+      "kind": "work",
+      "title": "Chunk 3 — `audit form` and hook installation",
+      "outcome": "Chunk 3 shipped: `mtool audit form`, running the checkable in-play rules (existence, Binding-block consistency, K-002/K-004/K-007 checks, S-001 secret hygiene, sandbox ages, link integrity, lag/deviation call-outs), with staged and changed-since delta modes; and `mtool hooks install`, writing the git pre-commit mirror.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N008",
+      "kind": "work",
+      "title": "Chunk 4 — `census`, `audit deliver`, `audit semantic`",
+      "outcome": "Chunk 4 shipped: `mtool census`, reconciling the Portfolio register against observed repositories and local checkouts; `mtool audit deliver`, mechanizing audit delivery by comparing findings against the newest same-kind Audit-log entry; and `mtool audit semantic`, assembling the judgment-free adjudication packet.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N009",
+      "kind": "work",
+      "title": "Chunk 5 — `links move` and plugin wiring",
+      "outcome": "Chunk 5 shipped: `mtool links move`, moving a document with git following and rewriting inbound links; and a Claude Code plugin injecting `mtool status --brief` at session start, guarding commits with `audit form --staged`, and shelling three skills to mtool.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N010",
+      "kind": "work",
+      "title": "Migrated to 1.3.0 and joined the `methodology` family",
+      "outcome": "v1.3.0 tagged 2026-08-25 (project families, template type and Q-001, custom definitions by citation, links-move limitation); all four amendments ship migration-note: none, so the pin bump is the whole migration.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N011",
+      "kind": "work",
+      "title": "Migrated to methodology 1.4.0",
+      "outcome": "2026-08-30; migration notes none mandatory, so the pin bump is the whole migration.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N012",
+      "kind": "work",
+      "title": "Link checker skips inline code spans",
+      "outcome": "spans are literal text, not markup; motivating instance: Allegro syntax in prose (applye: Effect) read as two dangling links in allegro's CHANGELOG and concepts.md.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N013",
+      "kind": "work",
+      "title": "S-001 scanner: key headers need a body",
+      "outcome": "the private-key pattern now requires a base64-shaped body after the header; motivating instance: two false positives on project-orchestrator-service (a runbook documenting a verify command's output; a test placeholder body).",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N014",
+      "kind": "work",
+      "title": "Migrated to methodology 1.5.0",
+      "outcome": "2026-09-02; the pin bump plus this release's one migration note: CLAUDE.md now carries W-008's prescribed reporting block verbatim, copied from the rule and verified byte-identical.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N015",
+      "kind": "work",
+      "title": "Style and IR checks, W-008 block drift",
+      "outcome": "`mtool style` runs the P- rules' mechanical checks and W-008's report shape, citing each finding's rule; `mtool ir check` runs the IR schema's CK-01 to CK-11 and counts unratified terms; `mtool audit form` now reports W-008 bootstrap-block drift.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N016",
+      "kind": "work",
+      "title": "Custom-type checker extension point",
+      "outcome": "proposals/custom-type-checker-extension.md: project-orchestrator asks that mtool audit form discover, run, and fold in a checker a defining project declares alongside its Article-7 custom type, so citation-defined types get the same mechanical checking as standard ones.",
+      "stage": "identified",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Completed"
+    },
+    {
+      "id": "P1-N017",
+      "kind": "work",
+      "title": "Stale Workflow-format claims in tool output and comments",
+      "outcome": "the Workflow declared info finding told readers \"the declaration format is undefined (methodology backlog open item)\", and two source comments said the same.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Upcoming"
+    },
+    {
+      "id": "P1-N018",
+      "kind": "work",
+      "title": "Workflow declaration parser",
+      "outcome": "parse the canonical format the v1.4.0 candidate's Workflow-declaration-format amendment defines (stages: a → b → c; live = <stage>; backlog default: checked ⇒ <s1>, unchecked ⇒ <s2>), derive deployed from Classification + Backlog designations, and clear the standing tool-unreadable info finding for conforming declarations (non-conforming declarations keep it).",
+      "stage": "identified",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Upcoming"
+    },
+    {
+      "id": "P1-N019",
+      "kind": "work",
+      "title": "W-008 bootstrap-cache drift check",
+      "outcome": "mtool audit form compares a project's CLAUDE.md copy of W-008's prescribed reporting block against the fenced block in the rule's Required bootstrap text field, and reports any difference as drift.",
+      "stage": "done",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Upcoming"
+    },
+    {
+      "id": "P1-N020",
+      "kind": "work",
+      "title": "Links inside verbatim quotations of foreign text",
+      "outcome": "the link checker resolves every relative link it finds, including links carried inside a blockquote that quotes another repository's document byte-exactly.",
+      "stage": "identified",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Upcoming"
+    },
+    {
+      "id": "P1-N021",
+      "kind": "work",
+      "title": "Deviation parser splits a fielded entry into several entries",
+      "outcome": "a deviation recorded as a heading plus labeled field bullets (Rule, Deviating practice, Rationale, Recorded, Disposition) parses as one deviation per bullet, and every bullet whose first line does not carry a rule id draws \"deviation entry lacks the rule it overrides\".",
+      "stage": "identified",
+      "parent": null,
+      "after": [],
+      "hold": null,
+      "start": "auto",
+      "docs": {
+        "plan": null,
+        "spec": null
+      },
+      "done": null,
+      "note": "Upcoming"
+    }
+  ],
+  "tasks": [],
+  "decisions": []
+}

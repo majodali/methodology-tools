@@ -8,7 +8,8 @@ document lifecycles and workflows. Read it before any work; nothing
 in this file or under .claude/ overrides it.
 
 Classification: C1 / S0 / component-library / package-registry
-Deviations: none
+Deviations: K-003 (the Backlog is the single source of progress
+truth), recorded in docs/classification.md for the state-file import
 
 ## Reporting and writing — cached from W-008; do not edit here
 

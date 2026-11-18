@@ -20,7 +20,15 @@ definitions and omission defaults: the
 
 ## Deviation register
 
-No deviations recorded.
+- **K-003 (the Backlog is the single source of progress truth)** —
+  recorded 2026-11-18, when majodali/project-orchestrator's node
+  P4-N045 imported this project's hand-written Backlog into
+  `orchestration/state.json` with `plan-state import`. The progress
+  truth is now the state file; the hand-written Backlog, frozen at
+  the import, is archived at
+  [docs/archive/backlog.md](archive/backlog.md), and
+  [docs/backlog.md](backlog.md) is a rendering of the state file,
+  written by the orchestration service.
 
 ## Custom definitions
 

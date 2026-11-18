@@ -1,0 +1,28 @@
+{
+  "nodes": {
+    "P1-N001": {
+      "title": "Repository bootstrap"
+    },
+    "P1-N003": {
+      "outcome": "Chunk 1 shipped: a markdown model, Classification parsing with omission defaults, rule-corpus parsing of applicability tags, the Article 4 applicability engine, and `mtool status` reporting in-play rules, deviations, version lag, sandbox ages and delta-ratio."
+    },
+    "P1-N004": {
+      "outcome": "Chunk 1 completion: `mtool status` reads the project's Audit log, computing the change ratio since the newest semantic-audit entry, or reporting honestly when no semantic audit or Audit log exists."
+    },
+    "P1-N005": {
+      "outcome": "Chunk 2 shipped: `mtool links check` for deterministic link integrity across a repo, and `mtool classify`, which writes a project's Classification, Binding block and governance docs from the corpus's skeletons in one run, never overwriting existing files."
+    },
+    "P1-N007": {
+      "outcome": "Chunk 3 shipped: `mtool audit form`, running the checkable in-play rules (existence, Binding-block consistency, K-002/K-004/K-007 checks, S-001 secret hygiene, sandbox ages, link integrity, lag/deviation call-outs), with staged and changed-since delta modes; and `mtool hooks install`, writing the git pre-commit mirror."
+    },
+    "P1-N008": {
+      "outcome": "Chunk 4 shipped: `mtool census`, reconciling the Portfolio register against observed repositories and local checkouts; `mtool audit deliver`, mechanizing audit delivery by comparing findings against the newest same-kind Audit-log entry; and `mtool audit semantic`, assembling the judgment-free adjudication packet."
+    },
+    "P1-N009": {
+      "outcome": "Chunk 5 shipped: `mtool links move`, moving a document with git following and rewriting inbound links; and a Claude Code plugin injecting `mtool status --brief` at session start, guarding commits with `audit form --staged`, and shelling three skills to mtool."
+    },
+    "P1-N015": {
+      "outcome": "`mtool style` runs the P- rules' mechanical checks and W-008's report shape, citing each finding's rule; `mtool ir check` runs the IR schema's CK-01 to CK-11 and counts unratified terms; `mtool audit form` now reports W-008 bootstrap-block drift."
+    }
+  }
+}

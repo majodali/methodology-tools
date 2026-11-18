@@ -7,10 +7,13 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "tsx src/test.ts",
-    "mtool": "tsx src/cli.ts"
+    "mtool": "tsx src/cli.ts",
+    "check": "node node_modules/project-orchestrator-service/dist/model/cli.js check",
+    "render": "node node_modules/project-orchestrator-service/dist/model/cli.js render --write"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "project-orchestrator-service": "github:majodali/project-orchestrator-service#24639d8296e3dd44826e5d5119b8c1cb3cea4150",
     "tsx": "^4",
     "typescript": "^5"
   }
